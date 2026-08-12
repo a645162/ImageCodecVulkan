@@ -1,11 +1,9 @@
 // Vulkan→OpenGL 零拷贝互操作集成测试。
 // 退出码: 0=PASS  2=SKIP（扩展/设备不支持）  1=FAIL
 #include <VulkanImageCodec/vic.hpp>
-// vic.hpp 仅前置声明公共类；实例化/调用静态方法需具体定义头
-//（均由测试链接的 VulkanImageCodec::{Api,GlInterop,Core} 的 PUBLIC include 提供）。
-#include "context.h"            // vic::Context
-#include "gl_interop.h"         // vic::GlInterop
-#include "gl_image_pipeline.h"  // vic::GlImagePipeline
+// 唯一入口 umbrella 头：包含即得 Context/ExportableBuffer/ExportableImage/Compute/
+// GlInterop/GlImagePipeline 的全部定义（经 VulkanImageCodec::Api 传播的 PUBLIC
+// include 目录解析）。仅 GL 扩展加载头 gl_ext.h 需单独引入。
 #include "gl_ext.h"
 #include <windows.h>
 #include <GL/gl.h>

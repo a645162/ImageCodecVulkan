@@ -92,6 +92,12 @@ uint32_t GlInterop::importBuffer(void* handle, uint64_t size) {
   GLuint buf = 0;
   e.glCreateBuffers(1, &buf);
   e.glNamedBufferStorageMemEXT(buf, static_cast<GLsizeiptr>(size), mem, 0);
+  if (glGetError() != GL_NO_ERROR) {
+    // 失败路径：删除已创建对象，不入册 imports()（避免泄漏），返回 0。
+    if (buf) e.glDeleteBuffers(1, &buf);
+    if (mem && e.glDeleteMemoryObjectsEXT) e.glDeleteMemoryObjectsEXT(1, &mem);
+    return 0;
+  }
   imports().push_back({buf, mem, false});
   return static_cast<uint32_t>(buf);
 }
@@ -109,6 +115,12 @@ uint32_t GlInterop::importTexture(void* handle, uint32_t w, uint32_t h, uint64_t
   GLuint tex = 0;
   e.glCreateTextures(GL_TEXTURE_2D, 1, &tex);
   e.glTextureStorageMem2DEXT(tex, 1, GL_RGBA8, static_cast<GLsizei>(w), static_cast<GLsizei>(h), mem, 0);
+  if (glGetError() != GL_NO_ERROR) {
+    // 失败路径：删除已创建对象，不入册 imports()（避免泄漏），返回 0。
+    if (tex) e.glDeleteTextures(1, &tex);
+    if (mem && e.glDeleteMemoryObjectsEXT) e.glDeleteMemoryObjectsEXT(1, &mem);
+    return 0;
+  }
   imports().push_back({tex, mem, true});
   return static_cast<uint32_t>(tex);
 }

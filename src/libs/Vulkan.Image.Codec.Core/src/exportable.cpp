@@ -1,4 +1,5 @@
 #include "exportable.h"
+#include <windows.h>  // CloseHandle（exportedHandle_ 为 OPAQUE_WIN32 句柄）
 
 namespace vic {
 namespace {
@@ -63,6 +64,7 @@ ExportableBuffer::ExportableBuffer(Context& ctx, VkDeviceSize size) : ctx_(&ctx)
   ci.pNext = &ext;
   if (vkCreateBuffer(ctx.vkDevice(), &ci, nullptr, &buffer_) != VK_SUCCESS)
     buffer_ = VK_NULL_HANDLE;
+  if (!buffer_) return;  // 创建失败：勿对空句柄查询内存需求（无效用法/UB）
 
   VkMemoryRequirements req{};
   vkGetBufferMemoryRequirements(ctx.vkDevice(), buffer_, &req);
@@ -111,6 +113,12 @@ void* ExportableBuffer::exportHandle() {
 }
 
 void ExportableBuffer::destroy() {
+  // OPAQUE_WIN32 句柄归本对象所有，GL_EXT_memory_object(_win32) 不接管 opaque
+  // 句柄；GL 侧仅 glImportMemoryWin32HandleEXT 引用同一块内存，不拥有句柄。
+  if (exportedHandle_) {
+    CloseHandle(static_cast<HANDLE>(exportedHandle_));
+    exportedHandle_ = nullptr;
+  }
   if (memory_) vkFreeMemory(ctx_->vkDevice(), memory_, nullptr);
   if (buffer_) vkDestroyBuffer(ctx_->vkDevice(), buffer_, nullptr);
   memory_ = VK_NULL_HANDLE;
@@ -138,6 +146,7 @@ ExportableImage::ExportableImage(Context& ctx, uint32_t width, uint32_t height, 
   ci.pNext = &ext;
   if (vkCreateImage(ctx.vkDevice(), &ci, nullptr, &image_) != VK_SUCCESS)
     image_ = VK_NULL_HANDLE;
+  if (!image_) return;  // 创建失败：勿对空句柄查询内存需求（无效用法/UB）
 
   VkMemoryRequirements req{};
   vkGetImageMemoryRequirements(ctx.vkDevice(), image_, &req);
@@ -205,6 +214,10 @@ void* ExportableImage::exportHandle() {
 }
 
 void ExportableImage::destroy() {
+  if (exportedHandle_) {
+    CloseHandle(static_cast<HANDLE>(exportedHandle_));
+    exportedHandle_ = nullptr;
+  }
   if (view_) vkDestroyImageView(ctx_->vkDevice(), view_, nullptr);
   if (memory_) vkFreeMemory(ctx_->vkDevice(), memory_, nullptr);
   if (image_) vkDestroyImage(ctx_->vkDevice(), image_, nullptr);

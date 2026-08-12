@@ -60,7 +60,9 @@ def run(build_dir):
     elif code == 2:
         print("SKIP: 环境不支持互操作扩展（Vulkan/GL）")
     else:
+        # 崩溃/异常码（如 -1073741819）归一化为契约中的 1=FAIL。
         print("FAIL")
+        code = 1
     return code
 
 
@@ -69,6 +71,10 @@ def main():
     ap.add_argument("-b", "--build-dir", default="build")
     ap.add_argument("--skip-build", action="store_true")
     args = ap.parse_args()
+    # 统一相对 repo 根解析 build_dir（run()/build() 内部都以 REPO 为准，避免
+    # 从非 repo 根目录调用时 build_dir 解析不一致导致的误报 FAIL）。
+    if not os.path.isabs(args.build_dir):
+        args.build_dir = os.path.join(REPO, args.build_dir)
     if not args.skip_build:
         c = build(args.build_dir)
         if c != 0:

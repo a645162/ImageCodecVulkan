@@ -29,7 +29,7 @@ python tests/run_test.py
 
 ## 结构
 ```
-include/VulkanImageCodec/vic.hpp   # 公共头（全部对外类声明）
+include/VulkanImageCodec/vic.hpp   # 公共头（唯一入口，含全部对外类定义）
 src/libs/Vulkan.Image.Codec.Core/  # 设备/可导出资源/compute
 src/libs/Vulkan.Image.Codec.GlInterop/ # GL 扩展加载 + 导入
 src/libs/Vulkan.Image.Codec.Api/   # GlImagePipeline 高层封装
