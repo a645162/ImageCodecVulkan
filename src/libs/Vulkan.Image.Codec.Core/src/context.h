@@ -28,6 +28,12 @@ public:
   VkQueue vkQueue() const { return queue_; }
   uint32_t queueFamilyIndex() const { return queueFamily_; }
   PFN_vkGetMemoryWin32HandleKHR vkGetMemoryWin32Handle() const { return vkGetMemoryWin32Handle_; }
+  // VK_KHR_external_memory_capabilities / VK_KHR_get_physical_device_properties2：
+  // vcpkg 的 vulkan-1.lib 不导出这两个 -KHR 符号，只能经 vkGetInstanceProcAddr 运行时解析。
+  PFN_vkGetPhysicalDeviceExternalBufferPropertiesKHR
+  vkPhysicalDeviceExternalBufferProperties() const { return extBufferProps_; }
+  PFN_vkGetPhysicalDeviceImageFormatProperties2KHR
+  vkPhysicalDeviceImageFormatProperties2() const { return imageFormatProps2_; }
 
   Result createExportableMemory(const VkMemoryRequirements& req,
                                 VkMemoryPropertyFlags props,
@@ -44,6 +50,8 @@ private:
   uint32_t queueFamily_ = 0;
   DeviceInfo info_;
   PFN_vkGetMemoryWin32HandleKHR vkGetMemoryWin32Handle_ = nullptr;
+  PFN_vkGetPhysicalDeviceExternalBufferPropertiesKHR extBufferProps_ = nullptr;
+  PFN_vkGetPhysicalDeviceImageFormatProperties2KHR imageFormatProps2_ = nullptr;
   bool enabledExternalWin32_ = false;
 };
 

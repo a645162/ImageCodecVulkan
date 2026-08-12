@@ -42,6 +42,7 @@ public:
   void* exportHandle();
   uint32_t width() const { return width_; }
   uint32_t height() const { return height_; }
+  VkDeviceSize memorySize() const { return size_; }  // VkImageMemoryRequirements::size
 
 private:
   void destroy();
@@ -51,6 +52,7 @@ private:
   VkDeviceMemory memory_ = VK_NULL_HANDLE;
   uint32_t width_ = 0;
   uint32_t height_ = 0;
+  VkDeviceSize size_ = 0;
   void* exportedHandle_ = nullptr;
 };
 

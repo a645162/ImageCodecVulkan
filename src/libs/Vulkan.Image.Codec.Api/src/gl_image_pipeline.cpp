@@ -12,6 +12,8 @@ struct GlImagePipeline::Impl {
   std::unique_ptr<ExportableImage> image;
 };
 
+GlImagePipeline::GlImagePipeline() = default;
+
 GlImagePipeline::~GlImagePipeline() {
   if (glBuffer_) GlInterop::releaseObject(glBuffer_, false);
   if (glTexture_) GlInterop::releaseObject(glTexture_, true);
@@ -49,7 +51,7 @@ Result GlImagePipeline::runTexture() {
   impl_->compute->writeImage(*impl_->image, width_, height_);
   void* h = impl_->image->exportHandle();
   if (!h) return Result::Error;
-  glTexture_ = GlInterop::importTexture(h, width_, height_);
+  glTexture_ = GlInterop::importTexture(h, width_, height_, impl_->image->memorySize());
   return glTexture_ ? Result::Ok : Result::Error;
 }
 

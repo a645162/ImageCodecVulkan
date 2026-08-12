@@ -96,14 +96,16 @@ uint32_t GlInterop::importBuffer(void* handle, uint64_t size) {
   return static_cast<uint32_t>(buf);
 }
 
-uint32_t GlInterop::importTexture(void* handle, uint32_t w, uint32_t h) {
+uint32_t GlInterop::importTexture(void* handle, uint32_t w, uint32_t h, uint64_t size) {
   const auto& e = glext::query();
   if (!e.glCreateTextures || !e.glCreateMemoryObjectsEXT || !e.glImportMemoryWin32HandleEXT ||
       !e.glTextureStorageMem2DEXT)
     return 0;
   GLuint mem = 0;
   e.glCreateMemoryObjectsEXT(1, &mem);
-  e.glImportMemoryWin32HandleEXT(mem, 0, glext::kOpaqueWin32Handle, handle);
+  // size 必须为内存真实字节数（GL_EXT_memory_object_win32），传 0 会导致
+  // 驱动在 glTextureStorageMem2DEXT 绑定时崩溃（vcpkg loader + NVIDIA 实测）。
+  e.glImportMemoryWin32HandleEXT(mem, static_cast<GLuint64>(size), glext::kOpaqueWin32Handle, handle);
   GLuint tex = 0;
   e.glCreateTextures(GL_TEXTURE_2D, 1, &tex);
   e.glTextureStorageMem2DEXT(tex, 1, GL_RGBA8, static_cast<GLsizei>(w), static_cast<GLsizei>(h), mem, 0);

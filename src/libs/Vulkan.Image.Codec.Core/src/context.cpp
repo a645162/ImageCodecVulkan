@@ -71,12 +71,16 @@ Context& Context::operator=(Context&& other) noexcept {
     queueFamily_ = other.queueFamily_;
     info_ = std::move(other.info_);
     vkGetMemoryWin32Handle_ = other.vkGetMemoryWin32Handle_;
+    extBufferProps_ = other.extBufferProps_;
+    imageFormatProps2_ = other.imageFormatProps2_;
     enabledExternalWin32_ = other.enabledExternalWin32_;
     other.instance_ = VK_NULL_HANDLE;
     other.physicalDevice_ = VK_NULL_HANDLE;
     other.device_ = VK_NULL_HANDLE;
     other.queue_ = VK_NULL_HANDLE;
     other.vkGetMemoryWin32Handle_ = nullptr;
+    other.extBufferProps_ = nullptr;
+    other.imageFormatProps2_ = nullptr;
     other.enabledExternalWin32_ = false;
   }
   return *this;
@@ -90,8 +94,11 @@ Result Context::init() {
 
   // VK_KHR_external_memory_capabilities 是设备级 VK_KHR_external_memory 的声明依赖，
   // 提供 vkGetPhysicalDeviceExternalBuffer/ImageFormatProperties(KHR) 导出能力查询。
+  // VK_KHR_get_physical_device_properties2 提供 vkGetPhysicalDeviceImageFormatProperties2KHR
+  // （不启用则 loader 返回 null，image 导出能力查询失效）。
   std::vector<const char*> instExts;
   instExts.push_back(VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME);
+  instExts.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 
   VkInstanceCreateInfo ici{};
   ici.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -100,6 +107,12 @@ Result Context::init() {
   ici.ppEnabledExtensionNames = instExts.data();
   if (vkCreateInstance(&ici, nullptr, &instance_) != VK_SUCCESS)
     return Result::InitFailed;
+
+  // vcpkg vulkan-1.lib 不导出这两个 -KHR 符号，经 vkGetInstanceProcAddr 运行时解析。
+  extBufferProps_ = reinterpret_cast<PFN_vkGetPhysicalDeviceExternalBufferPropertiesKHR>(
+      vkGetInstanceProcAddr(instance_, "vkGetPhysicalDeviceExternalBufferPropertiesKHR"));
+  imageFormatProps2_ = reinterpret_cast<PFN_vkGetPhysicalDeviceImageFormatProperties2KHR>(
+      vkGetInstanceProcAddr(instance_, "vkGetPhysicalDeviceImageFormatProperties2KHR"));
 
   bool externalWin32 = false;
   if (!pickPhysicalDevice(instance_, physicalDevice_, info_, queueFamily_, externalWin32)) {

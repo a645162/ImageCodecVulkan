@@ -30,6 +30,7 @@ Result Compute::init() {
   bindings[0].descriptorCount = 1;
   bindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
   bindings[1] = bindings[0];
+  bindings[1].binding = 1;  // 修复：bindings[1]=bindings[0] 会继承 binding=0，需显式置 1
   bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 
   VkDescriptorSetLayoutCreateInfo dsl{};
@@ -79,9 +80,9 @@ Result Compute::init() {
 
   VkDescriptorPoolSize sizes[2]{};
   sizes[0].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  sizes[0].descriptorCount = 1;
+  sizes[0].descriptorCount = 2;  // bufferSet_ + imageSet_ 各含 binding0(STORAGE_BUFFER)
   sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-  sizes[1].descriptorCount = 1;
+  sizes[1].descriptorCount = 2;  // 各含 binding1(STORAGE_IMAGE)
   VkDescriptorPoolCreateInfo dpc{};
   dpc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
   dpc.maxSets = 2;

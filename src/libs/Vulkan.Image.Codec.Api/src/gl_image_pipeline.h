@@ -6,7 +6,7 @@ namespace vic {
 
 class GlImagePipeline {
 public:
-  GlImagePipeline() = default;
+  GlImagePipeline();  // 定义在 .cpp（pimpl：unique_ptr<Impl> 需完整类型）
   ~GlImagePipeline();
   GlImagePipeline(const GlImagePipeline&) = delete;
   GlImagePipeline& operator=(const GlImagePipeline&) = delete;

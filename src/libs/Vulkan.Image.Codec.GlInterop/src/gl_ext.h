@@ -5,6 +5,15 @@
 #include <GL/gl.h>
 #include <cstddef>
 
+// Windows SDK 的 gl.h（GL 1.1）还缺 GL 1.5 的 GL_MAP_READ_BIT 与 GL 3.0 的
+// GL_RGBA8。按 Khronos 定义补齐，guard 防止与未来真实定义冲突。
+#ifndef GL_MAP_READ_BIT
+#define GL_MAP_READ_BIT 0x0001
+#endif
+#ifndef GL_RGBA8
+#define GL_RGBA8 0x8058
+#endif
+
 // Windows SDK 的 gl.h 只提供 GL 1.1 类型，缺 GL 1.5 的 ptr 类型与
 // GL 3.0 的 64 位类型（Khronos glext.h 中定义）。此处按 Khronos 定义补齐。
 typedef std::ptrdiff_t GLintptr;
