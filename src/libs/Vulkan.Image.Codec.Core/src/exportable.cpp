@@ -1,6 +1,51 @@
 #include "exportable.h"
 
 namespace vic {
+namespace {
+
+// VUID-09860：VkExportMemoryAllocateInfo::handleTypes 必须被报告为
+// "supported and compatible"（VkExternalBufferProperties /
+// VkExternalImageFormatProperties）。Vulkan 1.4 起 VkExternalMemoryProperties
+// 不再携带 memoryTypeBits —— 资源以 handleTypes 创建后，实现会把不支持的
+// memory type 从 vkGet(Buffer|Image)MemoryRequirements 的 memoryTypeBits 中
+// 过滤掉，因此类型选择在 createExportableMemory 中只需基于 req.memoryTypeBits。
+// 这里按句柄类型做资源级导出能力验证（EXPORTABLE_BIT），决定是否可链入导出信息。
+bool bufferExportable(VkPhysicalDevice pd, VkBufferUsageFlags usage) {
+  VkPhysicalDeviceExternalBufferInfo ebi{};
+  ebi.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_BUFFER_INFO;
+  ebi.usage = usage;
+  ebi.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+  VkExternalBufferProperties ep{};
+  ep.sType = VK_STRUCTURE_TYPE_EXTERNAL_BUFFER_PROPERTIES;
+  vkGetPhysicalDeviceExternalBufferPropertiesKHR(pd, &ebi, &ep);
+  return (ep.externalMemoryProperties.externalMemoryFeatures &
+          VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT) != 0;
+}
+
+bool imageExportable(VkPhysicalDevice pd, const VkImageCreateInfo& ici) {
+  VkPhysicalDeviceExternalImageFormatInfo extInfo{};
+  extInfo.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO;
+  extInfo.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+  VkPhysicalDeviceImageFormatInfo2 fi2{};
+  fi2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2;
+  fi2.pNext = &extInfo;
+  fi2.format = ici.format;
+  fi2.type = ici.imageType;
+  fi2.tiling = ici.tiling;
+  fi2.usage = ici.usage;
+  fi2.flags = ici.flags;
+  VkExternalImageFormatProperties extProps{};
+  extProps.sType = VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES;
+  VkImageFormatProperties2 ip2{};
+  ip2.sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2;
+  ip2.pNext = &extProps;
+  if (vkGetPhysicalDeviceImageFormatProperties2KHR(pd, &fi2, &ip2) != VK_SUCCESS)
+    return false;
+  return (extProps.externalMemoryProperties.externalMemoryFeatures &
+          VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT) != 0;
+}
+
+}  // namespace
 
 ExportableBuffer::ExportableBuffer(Context& ctx, VkDeviceSize size) : ctx_(&ctx), size_(size) {
   VkExternalMemoryBufferCreateInfo ext{};
@@ -19,7 +64,9 @@ ExportableBuffer::ExportableBuffer(Context& ctx, VkDeviceSize size) : ctx_(&ctx)
   VkMemoryRequirements req{};
   vkGetBufferMemoryRequirements(ctx.vkDevice(), buffer_, &req);
   VkDeviceMemory mem = VK_NULL_HANDLE;
-  if (ctx.createExportableMemory(req, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mem) == Result::Ok) {
+  if (ctx.createExportableMemory(req, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                                 bufferExportable(ctx.vkPhysicalDevice(), ci.usage),
+                                 mem) == Result::Ok) {
     memory_ = mem;
     vkBindBufferMemory(ctx.vkDevice(), buffer_, memory_, 0);
   }
@@ -92,7 +139,9 @@ ExportableImage::ExportableImage(Context& ctx, uint32_t width, uint32_t height, 
   VkMemoryRequirements req{};
   vkGetImageMemoryRequirements(ctx.vkDevice(), image_, &req);
   VkDeviceMemory mem = VK_NULL_HANDLE;
-  if (ctx.createExportableMemory(req, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mem) == Result::Ok) {
+  if (ctx.createExportableMemory(req, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                                 imageExportable(ctx.vkPhysicalDevice(), ci),
+                                 mem) == Result::Ok) {
     memory_ = mem;
     vkBindImageMemory(ctx.vkDevice(), image_, memory_, 0);
   }

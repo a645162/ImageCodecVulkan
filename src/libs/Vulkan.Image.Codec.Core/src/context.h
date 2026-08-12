@@ -23,6 +23,7 @@ public:
 
   const DeviceInfo& deviceInfo() const { return info_; }
   VkInstance vkInstance() const { return instance_; }
+  VkPhysicalDevice vkPhysicalDevice() const { return physicalDevice_; }
   VkDevice vkDevice() const { return device_; }
   VkQueue vkQueue() const { return queue_; }
   uint32_t queueFamilyIndex() const { return queueFamily_; }
@@ -30,6 +31,7 @@ public:
 
   Result createExportableMemory(const VkMemoryRequirements& req,
                                 VkMemoryPropertyFlags props,
+                                bool exportable,
                                 VkDeviceMemory& out) const;
 
 private:

@@ -88,9 +88,16 @@ Result Context::init() {
   app.pApplicationName = "VulkanImageCodec";
   app.apiVersion = VK_API_VERSION_1_0;
 
+  // VK_KHR_external_memory_capabilities 是设备级 VK_KHR_external_memory 的声明依赖，
+  // 提供 vkGetPhysicalDeviceExternalBuffer/ImageFormatProperties(KHR) 导出能力查询。
+  std::vector<const char*> instExts;
+  instExts.push_back(VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME);
+
   VkInstanceCreateInfo ici{};
   ici.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
   ici.pApplicationInfo = &app;
+  ici.enabledExtensionCount = static_cast<uint32_t>(instExts.size());
+  ici.ppEnabledExtensionNames = instExts.data();
   if (vkCreateInstance(&ici, nullptr, &instance_) != VK_SUCCESS)
     return Result::InitFailed;
 
@@ -142,10 +149,21 @@ void Context::destroy() {
 
 Result Context::createExportableMemory(const VkMemoryRequirements& req,
                                        VkMemoryPropertyFlags props,
+                                       bool exportable,
                                        VkDeviceMemory& out) const {
   VkPhysicalDeviceMemoryProperties mp{};
   vkGetPhysicalDeviceMemoryProperties(physicalDevice_, &mp);
 
+  // 导出内存类型校验（Vulkan 1.4 机制）：
+  // 资源在创建时已通过 VkExternalMemory(Buffer|Image)CreateInfo::handleTypes
+  // 声明导出句柄类型，规范保证 vkGet(Buffer|Image)MemoryRequirements 返回的
+  // memoryTypeBits 已过滤为"仅包含支持该句柄类型的 memory type"
+  // （见规范 External Memory 章节：不支持句柄类型的类型会被过滤掉）。
+  // 因此从 req.memoryTypeBits 中选取的类型天然满足导出句柄的类型要求
+  // （覆盖旧 VUID-VkExportMemoryAllocateInfo-handleTypes-00656）。
+  // exportable 为按 VUID-09860 对具体资源查询 VkExternalBufferProperties /
+  // VkExternalImageFormatProperties 得到的 EXPORTABLE_BIT 支持性结果，
+  // 仅在该资源确实可导出时才链入 VkExportMemoryAllocateInfo。
   int best = -1;
   for (uint32_t i = 0; i < mp.memoryTypeCount; ++i) {
     if ((req.memoryTypeBits & (1u << i)) == 0) continue;
@@ -161,7 +179,7 @@ Result Context::createExportableMemory(const VkMemoryRequirements& req,
   ai.memoryTypeIndex = static_cast<uint32_t>(best);
 
   VkExportMemoryAllocateInfo exportInfo{};
-  if (enabledExternalWin32_) {
+  if (enabledExternalWin32_ && exportable) {
     exportInfo.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
     exportInfo.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
     ai.pNext = &exportInfo;
