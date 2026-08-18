@@ -40,13 +40,13 @@ add_library(VulkanImageCodec.Core STATIC
   src/compute.cpp
   ${VIC_SPV_FILES})
 target_include_directories(VulkanImageCodec.Core PUBLIC
-  "${CMAKE_SOURCE_DIR}/include"
+  "${VIC_SOURCE_DIR}/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/src"
   "${VIC_GEN_DIR}"
   # vic.hpp 为 umbrella 头，Core/GlInterop/Api 的 .cpp 内部也经它编译；
   # 故把兄弟库源码目录也纳入 PUBLIC include（GlInterop/Api 经 PUBLIC 链接 Core
   # 自动继承，消费者经 Api 同样获得全部目录）。
-  "${CMAKE_SOURCE_DIR}/src/libs/Vulkan.Image.Codec.GlInterop/src"
-  "${CMAKE_SOURCE_DIR}/src/libs/Vulkan.Image.Codec.Api/src")
+  "${VIC_SOURCE_DIR}/src/libs/Vulkan.Image.Codec.GlInterop/src"
+  "${VIC_SOURCE_DIR}/src/libs/Vulkan.Image.Codec.Api/src")
 target_link_libraries(VulkanImageCodec.Core PUBLIC Vulkan::Vulkan)
 add_library(VulkanImageCodec::Core ALIAS VulkanImageCodec.Core)

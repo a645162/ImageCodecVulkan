@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
 project(VulkanImageCodec LANGUAGES CXX)
 
+# Keep all exported include paths rooted at this repository when the codec is
+# consumed with add_subdirectory() from an application such as ImageViewerQt.
+set(VIC_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+
 # ---- vcpkg toolchain bootstrap（与 ImageCodecOpenCL 相同模式）----
 if(WIN32)
   set(VCPKG_TARGET_TRIPLET "x64-windows" CACHE STRING "vcpkg triplet" FORCE)
