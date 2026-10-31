@@ -40,6 +40,8 @@ struct TiffEncodeOptions {
   int band_rows = 256;
   // 显存上限（0 = 不限制，仍受设备真实空闲显存约束）。
   size_t memory_limit = 0;
+  // 设备选择：-1 = 自动（独显优先），>=0 = 指定下标。
+  int device_index = -1;
   // GPU 不可用/显存不足时是否回退 CPU 预测器。回退产出的字节完全一致，
   // 因此默认允许；gpu_used 会如实报 false。
   bool allow_cpu_fallback = true;
@@ -48,6 +50,15 @@ struct TiffEncodeOptions {
 // 编码为 TIFF 字节流。gpu_used（可为 nullptr）回报预测器是否真的在 GPU 上算过。
 bool encodeTiff(const ImageBuffer &img, const TiffEncodeOptions &options,
                 std::vector<uint8_t> *out, bool *gpu_used, std::string *err);
+
+// 探测魔数（II*\0 / MM\0*）。上层据此刻画「这张 buffer 是不是 TIFF」，
+// 不必先尝试解码一次。
+inline bool hasTiffSignature(const uint8_t *p, size_t n) {
+  if (p == nullptr || n < 4) return false;
+  const bool le = p[0] == 'I' && p[1] == 'I' && p[2] == 42 && p[3] == 0;
+  const bool be = p[0] == 'M' && p[1] == 'M' && p[2] == 0 && p[3] == 42;
+  return le || be;
+}
 
 // 解码 TIFF 字节流（8-bit chunky；compression 1/5；strip 与 tiled 均可）。
 bool decodeTiff(const uint8_t *data, size_t size, ImageBuffer *out,

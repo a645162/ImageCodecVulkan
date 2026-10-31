@@ -31,6 +31,7 @@ bool encodePng(const ImageBuffer &img, const PngEncodeOptions &options,
     filter_options.band_rows = options.band_rows;
     filter_options.filter = options.filter;
     filter_options.memory_limit = options.memory_limit;
+    filter_options.device_index = options.device_index;
 
     std::string gpu_err;
     if (filterRowsOnGpu(img, filter_options, &filtered, &gpu_err)) {
@@ -81,6 +82,6 @@ bool decodePng(const uint8_t *data, size_t size, ImageBuffer *out,
   return readPng(data, size, *out, err);
 }
 
-}  // namespace png
-}  // namespace vulkan
-}  // namespace image_codec
+} // namespace png
+} // namespace vulkan
+} // namespace image_codec

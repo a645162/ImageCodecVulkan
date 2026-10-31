@@ -95,7 +95,7 @@ bool encodeTiff(const ImageBuffer &img, const TiffEncodeOptions &options,
   bool gpu_ready = false;
   if (predictor_active && options.use_gpu) {
     std::string why;
-    if (gpu_predictor.init(options.memory_limit, &why)) {
+    if (gpu_predictor.init(options.memory_limit, options.device_index, &why)) {
       gpu_ready = true;
     } else if (!options.allow_cpu_fallback) {
       if (err != nullptr) *err = why;

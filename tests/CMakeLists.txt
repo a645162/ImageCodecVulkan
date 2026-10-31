@@ -30,3 +30,9 @@ add_executable(tiff_test tiff_test.cpp)
 target_link_libraries(tiff_test PRIVATE VulkanImageCodec::Tiff)
 add_test(NAME tiff_test COMMAND tiff_test)
 set_tests_properties(tiff_test PROPERTIES SKIP_RETURN_CODE 2)
+
+# 公开 C API：往返、通道保真、探测、预算、指标（只用头文件里的入口，与路由层视角一致）。
+add_executable(codec_api_test codec_api_test.cpp)
+target_link_libraries(codec_api_test PRIVATE VulkanImageCodec::CodecApi)
+add_test(NAME codec_api_test COMMAND codec_api_test)
+set_tests_properties(codec_api_test PROPERTIES SKIP_RETURN_CODE 2)

@@ -87,14 +87,15 @@ void unpredictRowsCpu(uint8_t *data, size_t row_bytes, int channels, int rows) {
   }
 }
 
-bool PredictorGpu::init(size_t memory_limit, std::string *error) {
+bool PredictorGpu::init(size_t memory_limit, int device_index,
+                        std::string *error) {
   error_.clear();
   ready_ = false;
 
   std::string local;
-  // device_index = -1：按类型自动选（独显优先）。写死 0 在「核显排在前面」
+  // device_index < 0：按类型自动选（独显优先）。写死 0 在「核显排在前面」
   // 的机器上会选到一个没有 fp64 的设备，然后整条编解码链路莫名其妙不可用。
-  if (!device_.init(-1, &local)) {
+  if (!device_.init(device_index, &local)) {
     error_ = "TIFF: " + local;
     if (error != nullptr) *error = error_;
     return false;

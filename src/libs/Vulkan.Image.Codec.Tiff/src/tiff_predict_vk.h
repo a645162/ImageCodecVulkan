@@ -49,7 +49,8 @@ public:
   PredictorGpu &operator=(const PredictorGpu &) = delete;
 
   // memory_limit == 0 表示不限制（仍受设备真实空闲显存约束）。
-  bool init(size_t memory_limit, std::string *error);
+  // device_index < 0 = 自动选（独显优先）。
+  bool init(size_t memory_limit, int device_index, std::string *error);
 
   bool ready() const { return ready_; }
   const std::string &lastError() const { return error_; }

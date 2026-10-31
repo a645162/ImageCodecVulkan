@@ -17,13 +17,15 @@ namespace vulkan {
 namespace png {
 
 struct PngEncodeOptions {
-  int compression_level = 6;  // zlib 0..9
-  int filter = -1;            // -1 自适应，0..4 固定
-  bool use_gpu = true;        // false 时用容器层的 CPU 参考滤波
+  int compression_level = 6; // zlib 0..9
+  int filter = -1;           // -1 自适应，0..4 固定
+  bool use_gpu = true;       // false 时用容器层的 CPU 参考滤波
   // 每 band 行数（显存占用只与它有关，与图像高度无关）。
   int band_rows = 256;
   // 显存上限（0 = 不限制）。
   size_t memory_limit = 0;
+  // 设备选择：-1 = 自动（独显优先），>=0 = 指定下标。
+  int device_index = -1;
   // GPU 失败（设备不可用 / 显存不足）时是否回退 CPU 滤波（默认 true：
   // 产出合法 PNG 优先）。回退时 gpu_used 报 false，err 里必须能看到原因。
   bool allow_cpu_fallback = true;
@@ -37,6 +39,6 @@ bool encodePng(const ImageBuffer &img, const PngEncodeOptions &options,
 bool decodePng(const uint8_t *data, size_t size, ImageBuffer *out,
                std::string *err);
 
-}  // namespace png
-}  // namespace vulkan
-}  // namespace image_codec
+} // namespace png
+} // namespace vulkan
+} // namespace image_codec

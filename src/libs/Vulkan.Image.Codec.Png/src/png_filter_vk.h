@@ -34,6 +34,9 @@ struct FilterOptions {
   int filter = -1;
   // 显存上限（0 = 不限制）。超限时明确失败并说明「需要多少 / 上限多少」。
   size_t memory_limit = 0;
+  // 设备选择：-1 = 自动（独显优先），>=0 = 指定下标（同一台机器上「跑图形的
+  // 独显」与「有媒体引擎的核显」未必是同一块卡，调用方要能指定）。
+  int device_index = -1;
 };
 
 // 生成完整 filtered 流（每行 1 字节滤波类型 + width*channels 字节数据）。
@@ -41,6 +44,6 @@ struct FilterOptions {
 bool filterRowsOnGpu(const ImageBuffer &img, const FilterOptions &options,
                      std::vector<uint8_t> *out, std::string *err);
 
-}  // namespace png
-}  // namespace vulkan
-}  // namespace image_codec
+} // namespace png
+} // namespace vulkan
+} // namespace image_codec

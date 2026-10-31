@@ -119,7 +119,7 @@ void checkGpuPredictor() {
 
   PredictorGpu predictor;
   std::string err;
-  if (!predictor.init(0, &err)) {
+  if (!predictor.init(0, -1, &err)) {
     check(false, "predictor init: " + err);
     return;
   }
@@ -279,7 +279,7 @@ void checkBudgetAndFallback() {
 
   PredictorGpu predictor;
   std::string err;
-  if (!predictor.init(1024, &err)) {
+  if (!predictor.init(1024, -1, &err)) {
     check(false, "tiny-budget predictor init: " + err);
     return;
   }

@@ -50,7 +50,7 @@ int pickFilter(const uint32_t *scores) {
   return best_filter;
 }
 
-}  // namespace
+} // namespace
 
 bool filterRowsOnGpu(const ImageBuffer &img, const FilterOptions &options,
                      std::vector<uint8_t> *out, std::string *err) {
@@ -70,7 +70,7 @@ bool filterRowsOnGpu(const ImageBuffer &img, const FilterOptions &options,
 
   Device device;
   std::string local_err;
-  if (!device.init(0, &local_err)) {
+  if (!device.init(options.device_index, &local_err)) {
     if (err != nullptr) *err = "PNG: " + local_err;
     return false;
   }
@@ -81,7 +81,7 @@ bool filterRowsOnGpu(const ImageBuffer &img, const FilterOptions &options,
   const int channels = img.channels;
   const size_t row_bytes = img.stride();
   const int step = std::clamp(options.band_rows, 1, height);
-  const int band_rows = step + 1;  // 多一行：band 第 0 行是「上一行」
+  const int band_rows = step + 1; // 多一行：band 第 0 行是「上一行」
 
   Buffer src(&device, static_cast<size_t>(band_rows) * row_bytes);
   Buffer dst(&device, static_cast<size_t>(step) * row_bytes);
@@ -96,9 +96,9 @@ bool filterRowsOnGpu(const ImageBuffer &img, const FilterOptions &options,
 
   Pipeline pipeline;
   const std::vector<BufferBinding> bindings = {
-      {0, false},  // src
-      {1, true},   // dst
-      {2, true},   // scores
+      {0, false}, // src
+      {1, true},  // dst
+      {2, true},  // scores
   };
   if (!pipeline.init(device, vic_png_filter, vic_png_filter_size, bindings,
                      sizeof(FilterParams), &local_err)) {
@@ -113,7 +113,8 @@ bool filterRowsOnGpu(const ImageBuffer &img, const FilterOptions &options,
   std::vector<uint8_t> host_band(band_bytes, 0);
   std::vector<uint32_t> host_scores(static_cast<size_t>(step) * 5, 0);
   std::vector<uint32_t> host_words;
-  const size_t dst_words = alignUp(static_cast<size_t>(step) * row_bytes, 4) / 4;
+  const size_t dst_words =
+      alignUp(static_cast<size_t>(step) * row_bytes, 4) / 4;
   host_words.resize(dst_words, 0);
 
   for (int y0 = 0; y0 < height; y0 += step) {
@@ -182,21 +183,23 @@ bool filterRowsOnGpu(const ImageBuffer &img, const FilterOptions &options,
     }
 
     // ---- 组装：每行写 1 字节滤波类型，再拷 row_bytes 字节 ----
-    const uint8_t *filtered = reinterpret_cast<const uint8_t *>(host_words.data());
+    const uint8_t *filtered =
+        reinterpret_cast<const uint8_t *>(host_words.data());
     for (int r = 0; r < expect; ++r) {
       const int filter =
-          options.filter >= 0 ? options.filter
-                              : pickFilter(&host_scores[static_cast<size_t>(r) * 5]);
+          options.filter >= 0
+              ? options.filter
+              : pickFilter(&host_scores[static_cast<size_t>(r) * 5]);
       uint8_t *dst_row =
           out->data() + static_cast<size_t>(y0 + r) * row_stride_out;
       dst_row[0] = static_cast<uint8_t>(filter);
-      std::memcpy(dst_row + 1,
-                  filtered + static_cast<size_t>(r) * row_bytes, row_bytes);
+      std::memcpy(dst_row + 1, filtered + static_cast<size_t>(r) * row_bytes,
+                  row_bytes);
     }
   }
   return true;
 }
 
-}  // namespace png
-}  // namespace vulkan
-}  // namespace image_codec
+} // namespace png
+} // namespace vulkan
+} // namespace image_codec
