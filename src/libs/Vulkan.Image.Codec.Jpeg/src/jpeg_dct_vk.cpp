@@ -73,6 +73,8 @@ struct DownsampleParams {
   int32_t src_h;
   int32_t dst_w;
   int32_t dst_h;
+  int32_t h_ratio; // 4:4:4 = 1，4:2:0 / 4:2:2 = 2
+  int32_t v_ratio; // 4:4:4 / 4:2:2 = 1，4:2:0 = 2
 };
 
 struct FdctParams {
@@ -446,6 +448,12 @@ bool gpuEncode(const JpegImage &img, const uint8_t *pixels,
     ds.dst_stride = ci.blocks_x * 8;
     ds.dst_w = ci.blocks_x * 8;
     ds.dst_h = ci.blocks_y * 8;
+    // 抽取比例从采样因子推导，不能写死 2x2：4:2:2 只做水平抽取，色度平面
+    // 与亮度等高（v_ratio = 1）。写死 2x2 会把下半幅色度摊平。
+    ds.h_ratio = img.max_h / (ci.h_samp > 0 ? ci.h_samp : 1);
+    ds.v_ratio = img.max_v / (ci.v_samp > 0 ? ci.v_samp : 1);
+    if (ds.h_ratio < 1) ds.h_ratio = 1;
+    if (ds.v_ratio < 1) ds.v_ratio = 1;
 
     const size_t ds_items =
         static_cast<size_t>(ds.dst_w) * static_cast<size_t>(ds.dst_h);

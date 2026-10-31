@@ -336,6 +336,84 @@ void jpegGpuCpuParity(image_codec_vulkan_codec *codec, uint32_t channels,
   image_codec_vulkan_image_free(&src);
 }
 
+// 平滑渐变图（3 通道）：三个分量都随坐标平缓变化，且**垂直方向也有明显色彩
+// 变化**。随机图案测不出 4:2:2 的行错位——色度本来就是一片噪声，取错行只差
+// 几个 dB；平滑图一旦下半幅色度被 clamp 成一条，PSNR 直接塌 14 dB。
+image_codec_vulkan_image makeGradient(uint32_t width, uint32_t height) {
+  image_codec_vulkan_image img{};
+  img.width = width;
+  img.height = height;
+  img.channels = 3;
+  img.stride = static_cast<size_t>(width) * 3;
+  img.data_size = img.stride * height;
+  img.data = static_cast<uint8_t *>(std::malloc(img.data_size));
+  for (uint32_t y = 0; y < height; ++y) {
+    for (uint32_t x = 0; x < width; ++x) {
+      uint8_t *p = &img.data[(static_cast<size_t>(y) * width + x) * 3];
+      p[0] = static_cast<uint8_t>((x * 4) & 0xFF);
+      p[1] = static_cast<uint8_t>((y * 6) & 0xFF);
+      p[2] = static_cast<uint8_t>(((x + y) * 2) & 0xFF);
+    }
+  }
+  return img;
+}
+
+// 4:2:2 的色度平面**与亮度等高**，只做水平抽取（libjpeg h2v1）。这条路径与
+// 4:2:0 共用同一个下采样着色器，所以「把 2x2 写死」时两者看起来都还工作，
+// 只有 4:2:2 的下半幅色度被 clamp 到同一行——文件能打开、亮度正常、颜色整体
+// 跑偏。本测试断言两件事：
+//   1) 绝对下限 30 dB（写死 2x2 时这张图只有 19 dB 上下）；
+//   2) 不低于 4:2:0（平滑图上只丢水平色度，理应比 2x2 更好）。
+void jpegSubsampling422(image_codec_vulkan_codec *codec) {
+  image_codec_vulkan_image src = makeGradient(65, 39);
+
+  const auto psnr_of = [&](int subsampling) -> double {
+    image_codec_vulkan_encode_params params{};
+    params.jpeg_quality = 90;
+    params.jpeg_subsampling = subsampling;
+
+    size_t needed = 0;
+    if (image_codec_vulkan_encode(codec, IMAGE_CODEC_VULKAN_FORMAT_JPEG, &src,
+                                  &params, nullptr, &needed,
+                                  0) != IMAGE_CODEC_VULKAN_ERR_OUT_OF_MEMORY ||
+        needed == 0) {
+      return -1.0;
+    }
+    std::vector<uint8_t> buffer(needed);
+    size_t written = 0;
+    if (image_codec_vulkan_encode(codec, IMAGE_CODEC_VULKAN_FORMAT_JPEG, &src,
+                                  &params, buffer.data(), &written,
+                                  buffer.size()) != IMAGE_CODEC_VULKAN_OK) {
+      return -1.0;
+    }
+    image_codec_vulkan_image decoded{};
+    if (image_codec_vulkan_decode(codec, IMAGE_CODEC_VULKAN_FORMAT_JPEG,
+                                  buffer.data(), written,
+                                  &decoded) != IMAGE_CODEC_VULKAN_OK) {
+      return -1.0;
+    }
+    double psnr = -1.0;
+    if (image_codec_vulkan_metric_psnr(codec, &src, &decoded, &psnr) !=
+        IMAGE_CODEC_VULKAN_OK) {
+      psnr = -1.0;
+    }
+    image_codec_vulkan_image_free(&decoded);
+    return psnr;
+  };
+
+  const double p420 = psnr_of(420);
+  const double p422 = psnr_of(422);
+  check(p422 > 0.0, "jpeg 422: encode/decode/metric succeeded");
+  check(p422 >= 30.0,
+        "jpeg 422: psnr >= 30 (got " + std::to_string(p422) + ")");
+  check(p422 >= p420 - 1.0, "jpeg 422: not worse than 420 (422 " +
+                                std::to_string(p422) + " vs 420 " +
+                                std::to_string(p420) + ")");
+  std::printf("  %-16s psnr=%.2f dB (4:2:0 %.2f dB)\n", "jpeg gradient 422",
+              p422, p420);
+  image_codec_vulkan_image_free(&src);
+}
+
 } // namespace
 
 int main() {
@@ -422,12 +500,17 @@ int main() {
   // 有资格要求 30 dB / 38 dB。真要测画质应该换真实照片，而不是抬阈值。
   jpegRoundtrip(codec, 1, 0, 38.0, "jpeg gray");
   jpegRoundtrip(codec, 3, 420, 20.0, "jpeg rgb 420");
+  jpegRoundtrip(codec, 3, 422, 20.0, "jpeg rgb 422");
   jpegRoundtrip(codec, 3, 444, 30.0, "jpeg rgb 444");
 
   // GPU 路径必须与本后端的 CPU 参考逐位一致（不是阈值，是相等）。
   jpegGpuCpuParity(codec, 1, 0, "jpeg gray parity");
   jpegGpuCpuParity(codec, 3, 444, "jpeg rgb 444 parity");
   jpegGpuCpuParity(codec, 3, 420, "jpeg rgb 420 parity");
+  jpegGpuCpuParity(codec, 3, 422, "jpeg rgb 422 parity");
+
+  // 4:2:2 只做水平抽取——用平滑渐变图把「下采样写死 2x2」钉死在测试里。
+  jpegSubsampling422(codec);
 
   // 2/4 通道：JPEG 没有 Alpha 样本，必须显式拒绝（交给别的后端），
   // 绝不静默降维。

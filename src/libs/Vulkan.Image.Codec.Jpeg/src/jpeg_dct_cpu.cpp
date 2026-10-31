@@ -238,25 +238,38 @@ bool cpuEncode(const JpegImage &img, const uint8_t *pixels,
     ds_cb.assign(static_cast<size_t>(dw) * dh, 0.0f);
     ds_cr.assign(static_cast<size_t>(dw) * dh, 0.0f);
 
-    // (a+b+c+d+2)>>2 —— 与着色器、与 libjpeg 的 h2v2_downsample 同一条舍入。
+    // 抽取比例与着色器一致，从采样因子推导：4:2:2 只做水平抽取（v_ratio=1），
+    // 4:2:0 才是 2x2。写死 2x2 会让 4:2:2 的下半幅色度被 clamp 到同一行。
+    const int h_ratio = img.max_h / (ci.h_samp > 0 ? ci.h_samp : 1);
+    const int v_ratio = img.max_v / (ci.v_samp > 0 ? ci.v_samp : 1);
+    const int tap_count =
+        (h_ratio < 1 ? 1 : h_ratio) * (v_ratio < 1 ? 1 : v_ratio);
+    const int h_step = h_ratio < 1 ? 1 : h_ratio;
+    const int v_step = v_ratio < 1 ? 1 : v_ratio;
+
+    // (sum + count/2) / count —— h2v2 是 (a+b+c+d+2)>>2，h2v1 是 (a+b+1)>>1，
+    // 同一个式子。与着色器、与 libjpeg 的盒式下采样同一条舍入；漏掉那个
+    // 舍入项会让每个色度样本系统性偏低 0~1，与 GPU 侧整体错开一档。
     const auto downsample = [&](const std::vector<float> &src,
                                 std::vector<float> *dst) {
       for (int y = 0; y < dh; ++y) {
         for (int x = 0; x < dw; ++x) {
-          const int sx = x * 2;
-          const int sy = y * 2;
+          const int sx = x * h_step;
+          const int sy = y * v_step;
           const auto at = [&](int px, int py) {
             const int cx = std::clamp(px, 0, full_w - 1);
             const int cy = std::clamp(py, 0, full_h - 1);
             return static_cast<int>(src[static_cast<size_t>(cy) * full_w + cx] +
                                     0.5f);
           };
-          const int sum =
-              at(sx, sy) + at(sx + 1, sy) + at(sx, sy + 1) + at(sx + 1, sy + 1);
-          // (a+b+c+d+2)>>2：+2 是 libjpeg h2v2_downsample 的四舍五入项，
-          // 漏掉它每个色度样本都会系统性偏低 0~1，与 GPU 侧整体错开一档。
+          int sum = 0;
+          for (int dy = 0; dy < v_step; ++dy) {
+            for (int dx = 0; dx < h_step; ++dx) {
+              sum += at(sx + dx, sy + dy);
+            }
+          }
           (*dst)[static_cast<size_t>(y) * dw + x] =
-              static_cast<float>((sum + 2) >> 2);
+              static_cast<float>((sum + tap_count / 2) / tap_count);
         }
       }
     };
