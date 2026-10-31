@@ -1,7 +1,7 @@
 // File      : jpeg_ycbcr_to_rgb.comp
 // Brief     : JPEG 解码的「YCbCr -> RGB + 色度上采样」着色器
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 上采样按 libjpeg 的 fancy（三角滤波）规则逐像素推导：h2v2 用于 4:2:0、

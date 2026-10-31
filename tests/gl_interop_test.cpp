@@ -1,3 +1,11 @@
+/*
+ * File: gl_interop_test.cpp
+ * Brief: Gl interop test.
+ * Author: Haomin Kong
+ * Email: a645162@163.com
+ * Created: 2026-08-12
+ */
+
 // Vulkan→OpenGL 零拷贝互操作集成测试。
 // 退出码: 0=PASS  2=SKIP（扩展/设备不支持）  1=FAIL
 #include <VulkanImageCodec/vic.hpp>

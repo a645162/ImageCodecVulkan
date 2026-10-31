@@ -1,3 +1,9 @@
+# File: tests/CMakeLists.txt
+# Brief: CMake build configuration.
+# Author: Haomin Kong
+# Email: a645162@163.com
+# Created: 2026-08-12
+
 # Vulkan -> OpenGL 零拷贝互操作测试只在 Windows 上有意义（WGL + external_memory_win32）。
 if(WIN32)
   add_executable(gl_interop_test gl_interop_test.cpp)

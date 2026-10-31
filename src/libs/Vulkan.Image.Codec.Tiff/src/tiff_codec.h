@@ -1,7 +1,7 @@
 // File      : tiff_codec.h
 // Brief     : TIFF 编解码门面（容器 + LZW；预测器可在 GPU，LZW 在 CPU）
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 分工：

@@ -7,6 +7,12 @@
     python run_test.py --skip-build       # 只运行已构建的测试
 
 退出码: 0=PASS, 2=SKIP, 1=FAIL。
+
+File: run_test.py
+Brief: Run test.
+Author: Haomin Kong
+Email: a645162@163.com
+Created: 2026-08-12
 """
 import argparse
 import os

@@ -1,3 +1,11 @@
+/*
+ * File: gl_ext.h
+ * Brief: Gl ext.
+ * Author: Haomin Kong
+ * Email: a645162@163.com
+ * Created: 2026-08-12
+ */
+
 #pragma once
 // GL 4.5 core + GL_EXT_memory_object(_win32) 函数指针
 // （Windows opengl32 只导出 1.1，扩展一律经 wglGetProcAddress 获取）。

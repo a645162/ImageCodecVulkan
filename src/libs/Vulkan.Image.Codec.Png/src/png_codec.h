@@ -1,7 +1,7 @@
 // File      : png_codec.h
 // Brief     : PNG 编解码门面（编码行滤波在 GPU，deflate/inflate 在 zlib）
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 #pragma once
 

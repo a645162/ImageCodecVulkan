@@ -1,7 +1,7 @@
 // File      : jpeg_gray_to_y.comp
 // Brief     : JPEG 编码的「灰度样本 -> Y 平面」着色器（含块补齐，边缘复制）
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 灰度样本本身就是 Y，不需要颜色变换。单独一个着色器，避免让 rgb_to_ycbcr

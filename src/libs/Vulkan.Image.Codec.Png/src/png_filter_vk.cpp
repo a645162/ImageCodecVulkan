@@ -1,7 +1,7 @@
 // File      : png_filter_vk.cpp
 // Brief     : PNG 行滤波的 Vulkan 实现
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 #include "png_filter_vk.h"
 

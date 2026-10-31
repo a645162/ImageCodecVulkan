@@ -1,7 +1,7 @@
 // File      : vk_codec_device.h
 // Brief     : 编解码后端使用的 Vulkan 设备（含显存预算记账）
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 与 vic::Context 的分工：Context 只负责「建 instance/device/queue」，是给

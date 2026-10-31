@@ -1,7 +1,7 @@
 // File      : png_test.cpp
 // Brief     : PNG 编解码自测（GPU 滤波 vs CPU 参考、1..4 通道往返、band 边界）
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 退出码：0 = PASS，2 = SKIP（没有可用 Vulkan 设备），1 = FAIL。

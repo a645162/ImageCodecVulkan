@@ -1,7 +1,7 @@
 // File      : metrics.comp
 // Brief     : MSE / SSIM / MS-SSIM 的 Vulkan compute 着色器（单尺度累加）
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 并行形态：一个 invocation 负责一个 (像素, 通道)。

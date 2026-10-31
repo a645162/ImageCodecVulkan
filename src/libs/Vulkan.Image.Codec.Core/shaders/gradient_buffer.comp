@@ -1,3 +1,11 @@
+/*
+ * File: gradient_buffer.comp
+ * Brief: Gradient buffer.
+ * Author: Haomin Kong
+ * Email: a645162@163.com
+ * Created: 2026-08-12
+ */
+
 #version 450
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 // 打包 RGBA8（4 字节/像素）写满 W*H*4 字节的 buffer：GL 端按 W*H*4 直接 map 即得

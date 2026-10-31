@@ -1,7 +1,7 @@
 // File      : jpeg_huffman.cpp
 // Brief     : CPU 熵编解码实现
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 从 ImageCodecOpenCL 的同名模块移植（容器与熵编码是纯 CPU 逻辑，与后端无关）。

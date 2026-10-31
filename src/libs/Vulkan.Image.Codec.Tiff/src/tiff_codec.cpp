@@ -1,7 +1,7 @@
 // File      : tiff_codec.cpp
 // Brief     : TIFF 编解码实现（GPU 预测器 + CPU LZW + 容器）
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 #include "tiff_codec.h"
 

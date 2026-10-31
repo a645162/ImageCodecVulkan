@@ -1,7 +1,7 @@
 // File      : jpeg_codec.h
 // Brief     : baseline JPEG 编解码门面（CPU 熵编码 + Vulkan DCT/颜色变换）
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 分工与 CUDA / OpenCL 后端一致：

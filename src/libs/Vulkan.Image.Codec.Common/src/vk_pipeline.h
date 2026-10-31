@@ -1,7 +1,7 @@
 // File      : vk_pipeline.h
 // Brief     : Vulkan compute pipeline 的最小封装（storage buffer 绑定 + push constant）
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 编解码/指标用到的着色器形状都一样：若干只读存储缓冲 + 若干可写存储缓冲 +

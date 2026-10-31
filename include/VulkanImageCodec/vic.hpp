@@ -1,3 +1,11 @@
+/*
+ * File: vic.hpp
+ * Brief: Vic.
+ * Author: Haomin Kong
+ * Email: a645162@163.com
+ * Created: 2026-08-12
+ */
+
 #pragma once
 // VulkanImageCodec —— Vulkan compute 结果零拷贝传输到 OpenGL 的 C++ RAII 库。
 // 依赖：Vulkan (vcpkg), GL 仅通过本头不暴露；GL 对象以 uint32_t id 传递。

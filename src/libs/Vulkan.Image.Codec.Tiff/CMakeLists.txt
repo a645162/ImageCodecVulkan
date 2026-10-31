@@ -1,3 +1,9 @@
+# File: src/libs/Vulkan.Image.Codec.Tiff/CMakeLists.txt
+# Brief: CMake build configuration.
+# Author: Haomin Kong
+# Email: a645162@163.com
+# Created: 2026-10-31
+
 # VulkanImageCodec.Tiff —— TIFF 编解码（平台无关）。
 #
 # 预测器（Predictor=2，水平差分）在 Vulkan compute；LZW 编解码在 CPU——

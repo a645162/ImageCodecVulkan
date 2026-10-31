@@ -1,7 +1,7 @@
 // File      : image_codec_vulkan.cpp
 // Brief     : Vulkan 编解码后端对外 C API 实现（TIFF / PNG）
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 本层只做三件事：参数校验、格式分派、C 结构体 <-> ImageBuffer 转换。

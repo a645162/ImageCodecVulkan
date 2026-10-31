@@ -1,3 +1,11 @@
+<!--
+ * File: README.md
+ * Brief: ImageCodecVulkan.
+ * Author: Haomin Kong
+ * Email: a645162@163.com
+ * Created: 2026-08-12
+-->
+
 # ImageCodecVulkan
 
 Vulkan compute 库：**编解码与画质指标是平台无关的**；只有「Vulkan→OpenGL

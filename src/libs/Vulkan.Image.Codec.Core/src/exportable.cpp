@@ -1,3 +1,11 @@
+/*
+ * File: exportable.cpp
+ * Brief: Exportable.
+ * Author: Haomin Kong
+ * Email: a645162@163.com
+ * Created: 2026-08-12
+ */
+
 #include "exportable.h"
 #ifdef _WIN32
 #include <windows.h> // CloseHandle（exportedHandle_ 为 OPAQUE_WIN32 句柄）

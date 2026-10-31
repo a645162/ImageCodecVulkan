@@ -1,3 +1,9 @@
+# File: src/libs/Vulkan.Image.Codec.Common/CMakeLists.txt
+# Brief: CMake build configuration.
+# Author: Haomin Kong
+# Email: a645162@163.com
+# Created: 2026-10-31
+
 # VulkanImageCodec.Common —— 编解码共用层（平台无关）。
 #
 # 两部分：

@@ -1,3 +1,9 @@
+# File: src/libs/Vulkan.Image.Codec.Jpeg/CMakeLists.txt
+# Brief: CMake build configuration.
+# Author: Haomin Kong
+# Email: a645162@163.com
+# Created: 2026-10-31
+
 # VulkanImageCodec.Jpeg —— baseline JPEG 编解码（平台无关）。
 #
 # 容器与 Huffman 位流在 CPU（位流严格串行），DCT/IDCT、颜色变换、色度

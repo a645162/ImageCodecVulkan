@@ -1,7 +1,7 @@
 // File      : jpeg_rgb_to_ycbcr.comp
 // Brief     : JPEG 编码的「RGB -> YCbCr」着色器（全分辨率平面，边缘复制补齐）
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 输出三张全分辨率平面（含块补齐）。色度是否下采样由后面的 downsample 决定，

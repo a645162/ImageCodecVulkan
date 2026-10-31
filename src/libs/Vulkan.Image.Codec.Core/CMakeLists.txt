@@ -1,3 +1,9 @@
+# File: src/libs/Vulkan.Image.Codec.Core/CMakeLists.txt
+# Brief: CMake build configuration.
+# Author: Haomin Kong
+# Email: a645162@163.com
+# Created: 2026-08-12
+
 # VulkanImageCodec.Core —— 设备/上下文、可导出资源、compute pipeline（平台无关）。
 #
 # 着色器编译工具链的探测与 vic_add_shader_spv() 在顶层 CMakeLists.txt 里，

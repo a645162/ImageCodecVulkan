@@ -1,3 +1,9 @@
+# File: src/libs/Vulkan.Image.Codec.CodecApi/CMakeLists.txt
+# Brief: CMake build configuration.
+# Author: Haomin Kong
+# Email: a645162@163.com
+# Created: 2026-10-31
+
 # VulkanImageCodec.CodecApi —— 平台无关的编解码 C API。
 #
 # 与 Vulkan.Image.Codec.Api（Windows 专用的 GL 互操作）区分：那个负责把

@@ -1,3 +1,9 @@
+# File: src/libs/Vulkan.Image.Codec.Png/CMakeLists.txt
+# Brief: CMake build configuration.
+# Author: Haomin Kong
+# Email: a645162@163.com
+# Created: 2026-10-31
+
 # VulkanImageCodec.Png —— PNG 编解码（平台无关）。
 #
 # 容器/CRC/zlib 在 CPU；行滤波（filter + 自适应选择）在 Vulkan compute。

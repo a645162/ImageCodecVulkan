@@ -1,7 +1,7 @@
 // File      : jpeg_dct_vk.cpp
 // Brief     : JPEG 的 GPU DCT/颜色变换（Vulkan compute）实现
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 #include "jpeg_dct_vk.h"
 

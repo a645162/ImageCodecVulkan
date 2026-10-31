@@ -1,7 +1,7 @@
 // File      : codec_metrics_test.cpp
 // Brief     : Vulkan 指标与 CPU 参考 / golden 常量对拍
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 退出码：0 = PASS，2 = SKIP（没有可用 Vulkan 设备 / 不支持 fp64），1 = FAIL。

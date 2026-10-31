@@ -1,3 +1,11 @@
+/*
+ * File: context.h
+ * Brief: Context.
+ * Author: Haomin Kong
+ * Email: a645162@163.com
+ * Created: 2026-08-12
+ */
+
 #pragma once
 #include <VulkanImageCodec/vic.hpp>
 // 本 SDK 的 vk_platform.h 不再自动定义 VK_USE_PLATFORM_WIN32_KHR，

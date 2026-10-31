@@ -1,7 +1,7 @@
 // File      : vk_buffer.h
 // Brief     : host-visible Vulkan 存储缓冲（RAII + 显存预算记账）
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 编解码路径的缓冲全部是 host-visible + host-coherent：

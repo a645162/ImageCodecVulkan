@@ -1,7 +1,7 @@
 // File      : tiff_predict.comp
 // Brief     : TIFF Predictor=2（水平差分）的 Vulkan compute 着色器
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // TIFF 的 Predictor=2 是**逐行**差分：d[i] = s[i] - s[i-channels]（模 256），

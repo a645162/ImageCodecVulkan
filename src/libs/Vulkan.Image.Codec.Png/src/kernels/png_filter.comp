@@ -1,7 +1,7 @@
 // File      : png_filter.comp
 // Brief     : PNG 行滤波（自适应选择 + 滤波计算）的 Vulkan compute 着色器
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 两种模式（push constant mode）：

@@ -1,7 +1,7 @@
 // File      : metrics_common.h
 // Brief     : MSE / PSNR / SSIM / MS-SSIM 的共享定义（CPU 参考与 GPU 着色器共用）
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 为什么常数与公式只写一份：GPU 与 CPU 必须给出**同一个数字**，否则「换了后端

@@ -1,7 +1,7 @@
 // File      : metrics_common.cpp
 // Brief     : MSE / PSNR / SSIM / MS-SSIM 共享定义的实现
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 与 ImageCodecCUDA 的 metrics_common.cpp 同源；改动必须同步三处（CUDA / OpenCL /

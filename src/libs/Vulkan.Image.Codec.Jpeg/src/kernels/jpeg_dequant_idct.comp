@@ -1,7 +1,7 @@
 // File      : jpeg_dequant_idct.comp
 // Brief     : JPEG 解码的「反量化 + 2D IDCT」着色器
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 每个 invocation 负责一个 8x8 块的**一个输出像素**（gid = 块号*64 + 像素号），

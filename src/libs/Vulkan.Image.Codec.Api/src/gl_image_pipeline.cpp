@@ -1,3 +1,11 @@
+/*
+ * File: gl_image_pipeline.cpp
+ * Brief: Gl image pipeline.
+ * Author: Haomin Kong
+ * Email: a645162@163.com
+ * Created: 2026-08-12
+ */
+
 #include "gl_image_pipeline.h"
 #include "gl_interop.h"
 #include "context.h"

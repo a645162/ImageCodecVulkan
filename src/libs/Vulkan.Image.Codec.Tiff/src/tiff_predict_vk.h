@@ -1,7 +1,7 @@
 // File      : tiff_predict_vk.h
 // Brief     : TIFF Predictor=2（水平差分）的 Vulkan 实现与 CPU 参考
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 为什么只有预测器在 GPU：TIFF 的 LZW 字典构建是严格串行的（下一个码依赖

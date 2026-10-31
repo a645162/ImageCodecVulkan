@@ -1,7 +1,7 @@
 // File      : jpeg_dct_cpu.h
 // Brief     : JPEG 的纯 CPU 参考实现（IDCT/FDCT/颜色变换/上下采样）
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 为什么 Vulkan 后端里还留一份 CPU DCT：它**不是**兜底手段，而是自测的对照物。

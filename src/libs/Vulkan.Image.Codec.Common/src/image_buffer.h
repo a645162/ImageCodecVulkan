@@ -1,7 +1,7 @@
 // File      : image_buffer.h
 // Brief     : 宿主侧图像缓冲（top-down，1/2/3/4 通道）
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 与 ImageCodecCUDA / ImageCodecOpenCL 的 ImageBuffer 语义一致：

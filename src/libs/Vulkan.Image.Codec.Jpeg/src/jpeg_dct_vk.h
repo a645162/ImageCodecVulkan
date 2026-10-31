@@ -1,7 +1,7 @@
 // File      : jpeg_dct_vk.h
 // Brief     : JPEG 的 GPU DCT/颜色变换（Vulkan compute）门面
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 分工与 CUDA / OpenCL 后端完全一致：熵编码（Huffman）与容器在 CPU，

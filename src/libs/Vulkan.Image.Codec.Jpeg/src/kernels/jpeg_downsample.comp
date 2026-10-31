@@ -1,7 +1,7 @@
 // File      : jpeg_downsample.comp
 // Brief     : JPEG 编码的色度盒式下采样（4:2:0 为 h2v2，4:2:2 为 h2v1）
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 抽取比例必须由调用方给出（h_ratio / v_ratio），不能写死 2x2：

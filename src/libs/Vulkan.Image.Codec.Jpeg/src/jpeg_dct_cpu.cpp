@@ -1,7 +1,7 @@
 // File      : jpeg_dct_cpu.cpp
 // Brief     : JPEG 的纯 CPU 参考实现
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 逐像素循环在这里是刻意的例外：这是「GPU 结果的对照物」，必须在任何机器上

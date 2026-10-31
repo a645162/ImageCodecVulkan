@@ -1,7 +1,7 @@
 // File      : tiff_predict_vk.cpp
 // Brief     : TIFF Predictor=2（水平差分）的 Vulkan 实现
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 #include "tiff_predict_vk.h"
 

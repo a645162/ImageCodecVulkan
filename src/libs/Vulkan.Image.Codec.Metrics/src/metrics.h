@@ -1,7 +1,7 @@
 // File      : metrics.h
 // Brief     : 画质指标（MSE / PSNR / SSIM / MS-SSIM）的 Vulkan 实现入口
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 与 ImageCodecCUDA::Metrics / ImageCodecOpenCL 的 Metrics 共用同一套定义。

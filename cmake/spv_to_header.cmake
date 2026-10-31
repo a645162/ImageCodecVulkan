@@ -1,3 +1,9 @@
+# File: spv_to_header.cmake
+# Brief: Spv to header.
+# Author: Haomin Kong
+# Email: a645162@163.com
+# Created: 2026-10-31
+
 # 将 SPV_FILES(分号分隔的 .spv 路径) 逐个转为 uint32_t 数组写入 OUT_HEADER。
 # 生成: static const uint32_t vic_<name>[] = {...}; static const size_t vic_<name>_size = N;
 if(NOT DEFINED SPV_FILES OR NOT DEFINED OUT_HEADER)

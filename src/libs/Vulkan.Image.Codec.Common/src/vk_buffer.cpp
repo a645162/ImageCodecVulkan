@@ -1,7 +1,7 @@
 // File      : vk_buffer.cpp
 // Brief     : host-visible Vulkan 存储缓冲实现
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 #include "vk_buffer.h"
 

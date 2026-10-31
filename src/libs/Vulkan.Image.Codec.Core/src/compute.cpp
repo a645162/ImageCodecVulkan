@@ -1,3 +1,11 @@
+/*
+ * File: compute.cpp
+ * Brief: Compute.
+ * Author: Haomin Kong
+ * Email: a645162@163.com
+ * Created: 2026-08-12
+ */
+
 #include "compute.h"
 #include "vic_spv_data.h"
 #include <array>

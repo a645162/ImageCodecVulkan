@@ -1,7 +1,7 @@
 // File      : jpeg_fdct_quantize.comp
 // Brief     : JPEG 编码的「2D FDCT + 量化」着色器
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 每个 invocation 负责一个 8x8 块的一个输出系数，与 OpenCL 版 fdct_quantize

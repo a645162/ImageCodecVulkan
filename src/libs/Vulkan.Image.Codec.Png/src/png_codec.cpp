@@ -1,7 +1,7 @@
 // File      : png_codec.cpp
 // Brief     : PNG 编解码门面实现
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 #include "png_codec.h"
 

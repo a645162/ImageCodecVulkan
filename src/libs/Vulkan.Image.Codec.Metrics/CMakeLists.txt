@@ -1,3 +1,9 @@
+# File: src/libs/Vulkan.Image.Codec.Metrics/CMakeLists.txt
+# Brief: CMake build configuration.
+# Author: Haomin Kong
+# Email: a645162@163.com
+# Created: 2026-10-31
+
 # VulkanImageCodec.Metrics —— MSE / PSNR / SSIM / MS-SSIM（平台无关）。
 #
 # 着色器在构建期由 glslc 或 glslangValidator 编成 SPIR-V，再转成 uint32 数组头

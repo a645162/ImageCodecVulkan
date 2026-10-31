@@ -1,7 +1,7 @@
 // File      : metrics_cpu.cpp
 // Brief     : MSE / SSIM / MS-SSIM 的 CPU 参考实现
 // Author    : 孔昊旻(Haomin Kong)
-// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Email     : a645162@163.com
 // Created   : 2026-10-31
 //
 // 存在的意义不是「CPU 更快」，而是给 GPU 一个可以逐项对拍的基准：

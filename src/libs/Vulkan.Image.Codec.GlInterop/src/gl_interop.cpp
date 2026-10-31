@@ -1,3 +1,11 @@
+/*
+ * File: gl_interop.cpp
+ * Brief: Gl interop.
+ * Author: Haomin Kong
+ * Email: a645162@163.com
+ * Created: 2026-08-12
+ */
+
 #include <VulkanImageCodec/vic.hpp>
 #include "gl_ext.h"
 #include "gl_interop.h"
