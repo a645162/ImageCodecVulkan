@@ -7,6 +7,13 @@ Vulkan compute 库：**编解码与画质指标是平台无关的**；只有「V
 - `VulkanImageCodec::Core`：Vulkan 设备/上下文、可导出 Buffer/Image、compute pipeline（平台无关）。
 - `VulkanImageCodec::Common`：编解码共用层——1..4 通道 `ImageBuffer`、host-visible
   缓冲、显存预算记账（`VK_EXT_memory_budget` 查空闲显存）、storage-buffer compute pipeline（平台无关）。
+- `VulkanImageCodec::Jpeg`：baseline JPEG。容器（marker / 表 / MCU 布局）与 Huffman 位流在 CPU，
+  DCT/IDCT、RGB↔YCbCr、色度上下采样在 GPU；支持 4:4:4 / 4:2:2 / 4:2:0 与灰度。
+- `VulkanImageCodec::Tiff`：TIFF 容器（LE/BE 读取、strip/tiled）+ LZW 编解码（CPU）+
+  `Predictor=2` 水平差分（GPU）。
+- `VulkanImageCodec::Png`：行滤波（GPU，自适应或固定 0..4）+ DEFLATE/inflate（CPU，zlib）。
+- `VulkanImageCodec::CodecApi`：平台无关的编解码 C API（`image_codec_vulkan_*`），
+  供路由层/调用方选用，三种格式 + 指标都从这里进。
 - `VulkanImageCodec::Metrics`：MSE / PSNR / SSIM / MS-SSIM，GPU 累加用 double，
   与 CUDA / OpenCL 后端**逐位一致**（golden 常量锁在父项目 `tests/ico_test.cpp`）。
 - `VulkanImageCodec::GlInterop`（Windows）：`wglGetProcAddress` 手写加载 `GL_EXT_memory_object(_win32)`，将 win32 handle 导入 GL buffer/texture。
@@ -16,7 +23,7 @@ Vulkan compute 库：**编解码与画质指标是平台无关的**；只有「V
 ## 平台划分（为什么 Linux 也能用）
 | 模块 | Windows | Linux / 其它 |
 | --- | --- | --- |
-| Core / Common / Metrics / Tiff / Png / Jpeg | ✅ | ✅ |
+| Core / Common / Metrics / Jpeg / Tiff / Png / CodecApi | ✅ | ✅ |
 | GlInterop / Api（GL 互操作） | ✅ | 不构建、不导出 |
 
 `VK_USE_PLATFORM_WIN32_KHR` 只在 `_WIN32` 下定义；非 Windows 上没有
@@ -47,12 +54,25 @@ python tests/run_test.py
 
 ## 结构
 ```
-include/VulkanImageCodec/vic.hpp       # 公共头（唯一入口，含全部对外类定义）
-src/libs/Vulkan.Image.Codec.Core/      # 设备/可导出资源/compute（平台无关）
-src/libs/Vulkan.Image.Codec.Common/    # ImageBuffer / 缓冲 / 显存预算 / pipeline（平台无关）
-src/libs/Vulkan.Image.Codec.Metrics/   # MSE / PSNR / SSIM / MS-SSIM（GPU + CPU 参考）
-src/libs/Vulkan.Image.Codec.GlInterop/ # GL 扩展加载 + 导入（仅 Windows）
-src/libs/Vulkan.Image.Codec.Api/       # GlImagePipeline 高层封装（仅 Windows）
-cmake/spv_to_header.cmake              # .spv -> uint32_t 数组头（各模块共用）
-tests/                                 # C++ 测试（codec_metrics_test 平台无关）
+include/VulkanImageCodec/vic.hpp            # 公共头（Vulkan 侧类，含 GL 互操作）
+include/VulkanImageCodec/image_codec_vulkan.h  # 平台无关编解码 C API
+src/libs/Vulkan.Image.Codec.Core/           # 设备/可导出资源/compute（平台无关）
+src/libs/Vulkan.Image.Codec.Common/         # ImageBuffer / 缓冲 / 显存预算 / pipeline（平台无关）
+src/libs/Vulkan.Image.Codec.Metrics/        # MSE / PSNR / SSIM / MS-SSIM（GPU + CPU 参考）
+src/libs/Vulkan.Image.Codec.Jpeg/           # baseline JPEG：容器/Huffman(CPU) + DCT/颜色(GPU)
+src/libs/Vulkan.Image.Codec.Tiff/           # TIFF 容器 + LZW(CPU) + 预测器(GPU)
+src/libs/Vulkan.Image.Codec.Png/            # PNG 行滤波(GPU) + DEFLATE(CPU)
+src/libs/Vulkan.Image.Codec.CodecApi/       # 平台无关 C API（三种格式 + 指标）
+src/libs/Vulkan.Image.Codec.GlInterop/      # GL 扩展加载 + 导入（仅 Windows）
+src/libs/Vulkan.Image.Codec.Api/            # GlImagePipeline 高层封装（仅 Windows）
+cmake/spv_to_header.cmake                   # .spv -> uint32_t 数组头（各模块共用）
+tests/                                      # C++ 测试（codec_api / 指标 / PNG / TIFF；GL 互操作仅 Windows）
 ```
+
+**GPU 与后端自带的 CPU 参考逐位一致**（`tests/codec_api_test.cpp` 做字节级比对），
+三条约束缺一不可：颜色变换用 libjpeg 的 16 位定点系数（浮点 BT.601 会被驱动 FMA 合并，
+1 ulp 经 `(a+b+c+d+2)>>2` 放大成 ±1 色度）；DCT 累加用 GLSL `precise` + CPU 侧
+`-ffp-contract=off`；量化舍入带 1e-3 平局偏置（DC 经常精确落在 `n+0.5`）。
+
+色度下采样的抽取比例由采样因子推出（`h_ratio = max_h/h_samp`、`v_ratio = max_v/v_samp`），
+4:2:2 是 **2x1** 而不是 2x2——写死 2x2 会让 4:2:2 的下半幅颜色被摊平（文件能开、亮度正常）。
