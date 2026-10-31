@@ -144,8 +144,13 @@ IMAGE_CODEC_VULKAN_API const char *
 image_codec_vulkan_status_string(image_codec_vulkan_status status);
 
 // 创建编解码器（绑定 device_index 指定的 Vulkan 设备，-1 = 自动选独显优先）。
-// 设备不可用（没有 Vulkan 设备 / 驱动不支持 fp64）时返回
+// 设备不可用（没有 Vulkan 设备 / 没有 compute 队列）时返回
 // IMAGE_CODEC_VULKAN_ERR_BACKEND_UNAVAILABLE。
+//
+// 没有 shaderFloat64 的设备**仍然可以创建**：编解码（JPEG/PNG/TIFF）只用 fp32，
+// 只有指标必须 double 累加，届时指标调用自己返回 BackendUnavailable 并附原因，
+// 由上层回退 CPU 指标。把整块卡因为一个可选算子判死刑，会让只有核显的机器
+// 完全用不上本后端。
 IMAGE_CODEC_VULKAN_API image_codec_vulkan_status
 image_codec_vulkan_codec_create(image_codec_vulkan_codec **out_codec,
                                 int device_index);

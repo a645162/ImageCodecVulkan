@@ -76,6 +76,7 @@ std::string toLower(std::string text) {
 //   * 显存预算 / 设备分配失败 → OutOfMemory（CPU 后端用内存就能顶上）；
 //   * 格式/子格式不支持 → UnsupportedFormat（别的后端可能能读）；
 //   * 设备本身不可用（没有设备 / 驱动不支持 fp64）→ BackendUnavailable；
+//     注意 fp64 只在指标调用里才是硬性要求，编解码在没有 fp64 的核显上照常跑。
 //   * 其余 → DecodeFailed/EncodeFailed：真正的失败，不允许被别的后端悄悄救回来。
 image_codec_vulkan_status classifyFailure(const std::string &err,
                                           bool encoding) {
@@ -241,10 +242,20 @@ image_codec_vulkan_status runMetric(
 
   std::string err;
   if (!fn(buf_a, buf_b, opt, &err)) {
-    return classifyFailure(err, /*encoding=*/false) ==
-                   IMAGE_CODEC_VULKAN_ERR_OUT_OF_MEMORY
-               ? IMAGE_CODEC_VULKAN_ERR_OUT_OF_MEMORY
-               : IMAGE_CODEC_VULKAN_ERR_INTERNAL;
+    // 失败必须如实分类，不能一律收成 Internal：路由层的回退规则是
+    // 「BackendUnavailable / UnsupportedFormat / OutOfMemory 换下一个后端」，
+    // 「Internal 之类不阻止继续但记录下来」。把它压成 Internal 会让本机没有
+    // fp64 时（指标算不了）连 CPU 指标都退不回去，直接变成一次硬失败。
+    const image_codec_vulkan_status status =
+        classifyFailure(err, /*encoding=*/false);
+    switch (status) {
+    case IMAGE_CODEC_VULKAN_ERR_OUT_OF_MEMORY:
+    case IMAGE_CODEC_VULKAN_ERR_BACKEND_UNAVAILABLE:
+    case IMAGE_CODEC_VULKAN_ERR_UNSUPPORTED_FORMAT:
+      return status;
+    default:
+      return IMAGE_CODEC_VULKAN_ERR_INTERNAL;
+    }
   }
   return IMAGE_CODEC_VULKAN_OK;
 }
@@ -302,8 +313,9 @@ image_codec_vulkan_codec_create(image_codec_vulkan_codec **out_codec,
   }
   codec->caps = device.caps();
   codec->memory = device.memoryInfo();
-  codec->note = "JPEG not implemented in this build (baseline JPEG pending); "
-                "TIFF LZW runs on CPU (serial dictionary), Predictor=2 on GPU";
+  codec->note = "metrics accumulate in fp64 (requires shaderFloat64); "
+                "TIFF LZW runs on CPU (serial dictionary), Predictor=2 on GPU; "
+                "JPEG Huffman/container on CPU, DCT/color on GPU";
 
   *out_codec = codec;
   return IMAGE_CODEC_VULKAN_OK;
@@ -635,19 +647,15 @@ image_codec_vulkan_status image_codec_vulkan_device_list(char ***names,
   // 逐个下标尝试建设备：能建成功的就是「本后端真的能用」的设备。
   // Device::init 在越界时给的错误固定以 "out of range" 开头，据此收尾；
   // 上限 16 只是防御性上限（现实中一台机器不可能有 16 块 compute GPU）。
+  // 没有 fp64 的卡也列入：编解码不需要 fp64，只有指标会回退 CPU。
   std::vector<std::string> list;
   for (int index = 0; index < 16; ++index) {
     Device device;
     std::string err;
     if (!device.init(index, &err)) {
       if (toLower(err).find("out of range") != std::string::npos) break;
-      // 该下标存在但不可用（例如没有 fp64）：不列入，继续看下一块卡，
-      // 否则第一块卡不支持 fp64 会把后面的独显一起藏起来。
-      if (toLower(err).find("does not support shaderfloat64") !=
-          std::string::npos) {
-        continue;
-      }
-      break;
+      // 这一块卡建不出来（没有 compute 队列等）：跳过，别让它把后面的卡藏起来。
+      continue;
     }
     char buf[384];
     std::snprintf(buf, sizeof(buf), "%d: %s (api %u.%u, %zu MiB)", index,

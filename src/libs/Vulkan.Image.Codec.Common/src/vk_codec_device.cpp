@@ -43,13 +43,9 @@ bool Device::init(int device_index, std::string *error) {
     }
     return false;
   }
-  if (!context_.float64Enabled()) {
-    if (error != nullptr) {
-      *error =
-          "vulkan: device does not enable shaderFloat64 (required by metrics)";
-    }
-    return false;
-  }
+  // fp64 只「申请」不「强制」：设备支持就启用（指标走 GPU），不支持也让编解码
+  // 照常跑——JPEG 的 DCT/颜色变换、PNG 行滤波、TIFF 预测器都是 fp32 运算。
+  // 指标自己检查 caps().fp64 并给出明确原因，由上层回退 CPU 指标。
 
   caps_.name = context_.deviceInfo().name;
   caps_.api_version = context_.deviceInfo().apiVersion;

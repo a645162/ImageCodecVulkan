@@ -6,7 +6,10 @@
 //
 // 与 vic::Context 的分工：Context 只负责「建 instance/device/queue」，是给
 // GL 互操作用的通用层；本类在它之上补三件编解码真正需要的事：
-//   1. 硬性要求 fp64（指标累加必须 double，申请不到就明确失败）；
+//   1. 设备支持 fp64（shaderFloat64）时启用它：指标累加必须 double 才能与
+//      CPU 参考逐位对齐。设备没有这个特性不影响编解码，指标自己会明确失败
+//      并让上层回退 CPU——绝不退化成 float 计算出一个「看着差不多」的数字；
+
 //   2. 显存预算：每次分配先记账，超上限立刻失败并给出原因，绝不把整机拖进
 //      swap。CUDA 后端的 MemoryBudget 就是同一个思路，两边行为要对得上；
 //   3. 把「总显存 / 空闲显存 / 单次分配上限」问清楚，供上层在创建句柄之前
@@ -58,8 +61,8 @@ public:
   Device &operator=(const Device &) = delete;
 
   // 建 instance/device/queue。device_index < 0 = 自动选（独显优先）。
-  // 本函数总是要求 fp64：编解码后端里唯一需要设备能力的就是指标，
-  // 而指标的正确性建立在 double 累加上（见 Metrics 模块的说明）。
+  // 设备支持 fp64 时启用（指标要用 double 累加）；不支持也能建成——编解码本身
+  // 不需要 fp64，指标调用会自己检查 caps().fp64 并返回明确原因。
   bool init(int device_index, std::string *error);
 
   bool ready() const { return ready_; }

@@ -57,7 +57,8 @@ bool pickPhysicalDevice(VkInstance inst, const Context::Options &options,
 
       VkPhysicalDeviceFeatures features{};
       vkGetPhysicalDeviceFeatures(d, &features);
-      if (options.request_float64 && !features.shaderFloat64) {
+      if (options.request_float64 && options.require_float64 &&
+          !features.shaderFloat64) {
         if (explicit_index >= 0) {
           error = std::string("device '") + p.deviceName +
                   "' does not support shaderFloat64";
@@ -105,7 +106,7 @@ bool pickPhysicalDevice(VkInstance inst, const Context::Options &options,
     }
   }
 
-  if (options.request_float64) {
+  if (options.request_float64 && options.require_float64) {
     error = "no Vulkan device with compute queue and shaderFloat64";
   } else {
     error = "no Vulkan device with a compute queue";

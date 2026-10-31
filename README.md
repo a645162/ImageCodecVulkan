@@ -42,8 +42,10 @@ Vulkan compute 库：**编解码与画质指标是平台无关的**；只有「V
 - GLSL 编译器：构建期需要 `glslc`（Vulkan SDK）或 `glslangValidator`
   （Linux 发行版通常只提供后者，如 `apt install glslang-tools`）。
   两者都只用来生成 SPIR-V，**不提交 `.spv`**，运行期也不需要它们。
-- 指标需要设备支持 `shaderFloat64`：double 累加是对拍的前提，申请不到会明确失败，
-  不会悄悄退化成 float。
+- 指标需要设备支持 `shaderFloat64`：double 累加是对拍的前提。**只影响指标**——
+  设备没有该特性时编解码（JPEG/PNG/TIFF 全是 fp32）照常可用，指标调用返回
+  `BackendUnavailable` 并附原因，由上层回退 CPU 指标，绝不悄悄退化成 float。
+  （只有核显的机器不会因为一个可选算子被整块判死。）
 - Windows GL 互操作另需：`opengl32.lib` / `user32.lib` / `gdi32.lib`，驱动支持
   `GL_EXT_memory_object` / `GL_EXT_memory_object_win32`（NVIDIA/AMD 现代桌面驱动均支持）。
 

@@ -33,8 +33,13 @@ public:
     // 未必是同一块卡，调用方要能指定。
     int device_index = -1;
     // 是否要求 fp64（shaderFloat64）。指标累加必须用 double 才能与 CPU 参考
-    // 逐位对齐（见 Metrics 模块），申请不到就明确失败，不允许悄悄退化成 float。
+    // 逐位对齐（见 Metrics 模块）。默认只「申请」不「强制」：编解码（JPEG DCT、
+    // PNG 行滤波、TIFF 预测器）根本不需要 fp64，把整块卡因为一个可选算子判死刑
+    // 会让只有核显的机器彻底用不上本后端。指标自己检查 require_float64。
     bool request_float64 = false;
+    // 是否把 fp64 当作硬性要求：为 true 时，缺该特性的设备直接不选（自动选择
+    // 时跳过、显式指定时报错），而不是等指标跑到一半才失败。
+    bool require_float64 = false;
     // 额外请求的设备扩展（只在设备真的支持时才启用；用
     // deviceExtensionEnabled() 查实际结果）。例如 VK_EXT_memory_budget。
     std::vector<const char *> extra_device_extensions;

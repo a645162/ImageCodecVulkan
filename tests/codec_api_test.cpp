@@ -186,6 +186,39 @@ void roundtrip(image_codec_vulkan_codec *codec, int format, const char *name,
   image_codec_vulkan_image_free(&src);
 }
 
+// 后端指标在设备没有 fp64 时会明确返回 BackendUnavailable（路由层据此回退
+// CPU 指标）。往返质量闸门不能因为这台机器没有 fp64 就整段失效，所以在测试里
+// 补一份宿主 PSNR：单层遍历（不做嵌套循环），只用来把「编码成功但内容全错」
+// 挡在门外——它不是指标模块的替代品，指标本身另有 golden 常量对拍。
+double hostPsnr(const image_codec_vulkan_image &a,
+                const image_codec_vulkan_image &b) {
+  if (a.data == nullptr || b.data == nullptr || a.data_size != b.data_size ||
+      a.data_size == 0) {
+    return -1.0;
+  }
+  double sum = 0.0;
+  for (size_t i = 0; i < a.data_size; ++i) {
+    const double d = static_cast<double>(a.data[i]) - b.data[i];
+    sum += d * d;
+  }
+  const double mse = sum / static_cast<double>(a.data_size);
+  if (mse <= 0.0) return 99.0;
+  return 10.0 * std::log10((255.0 * 255.0) / mse);
+}
+
+// 优先用后端指标（顺带验证它在这台设备上真的能跑），本机没有 fp64 时退回
+// 宿主 PSNR，返回 -1 表示「连算都算不出来」。
+double psnrOf(image_codec_vulkan_codec *codec,
+              const image_codec_vulkan_image &a,
+              const image_codec_vulkan_image &b) {
+  double psnr = -1.0;
+  const image_codec_vulkan_status st =
+      image_codec_vulkan_metric_psnr(codec, &a, &b, &psnr);
+  if (st == IMAGE_CODEC_VULKAN_OK) return psnr;
+  if (st == IMAGE_CODEC_VULKAN_ERR_BACKEND_UNAVAILABLE) return hostPsnr(a, b);
+  return -1.0;
+}
+
 // 有损往返：编码 -> 解码 -> 比 PSNR。JPEG 不要求逐字节相等，但要求
 // 「通道数不变、几何不变、画质不低于阈值」，否则一个「编码成功但内容全错」
 // 的实现也能通过。
@@ -243,11 +276,9 @@ void jpegRoundtrip(image_codec_vulkan_codec *codec, uint32_t channels,
   // 通道保真：灰度进必须灰度出。
   check(decoded.channels == channels, std::string(name) + ": channel fidelity");
 
-  double psnr = 0.0;
-  const image_codec_vulkan_status ms =
-      image_codec_vulkan_metric_psnr(codec, &src, &decoded, &psnr);
-  check(ms == IMAGE_CODEC_VULKAN_OK, std::string(name) + ": psnr computed");
-  if (ms == IMAGE_CODEC_VULKAN_OK) {
+  const double psnr = psnrOf(codec, src, decoded);
+  check(psnr > 0.0, std::string(name) + ": psnr computed");
+  if (psnr > 0.0) {
     check(psnr >= min_psnr, std::string(name) +
                                 ": psnr >= " + std::to_string(min_psnr) +
                                 " (got " + std::to_string(psnr) + ")");
@@ -392,11 +423,7 @@ void jpegSubsampling422(image_codec_vulkan_codec *codec) {
                                   &decoded) != IMAGE_CODEC_VULKAN_OK) {
       return -1.0;
     }
-    double psnr = -1.0;
-    if (image_codec_vulkan_metric_psnr(codec, &src, &decoded, &psnr) !=
-        IMAGE_CODEC_VULKAN_OK) {
-      psnr = -1.0;
-    }
+    const double psnr = psnrOf(codec, src, decoded);
     image_codec_vulkan_image_free(&decoded);
     return psnr;
   };
@@ -414,15 +441,83 @@ void jpegSubsampling422(image_codec_vulkan_codec *codec) {
   image_codec_vulkan_image_free(&src);
 }
 
+// 设备选择：默认 -1 = 自动（独显优先）。显式指定走 argv[1] 或环境变量
+// VIC_TEST_DEVICE_INDEX，用于在多 GPU 机器上验证「非首选设备」也能跑通
+// （例如集显上没有 fp64 时指标必须明确报错/跳过，而不是悄悄换设备）。
+int requestedDeviceIndex(int argc, char **argv) {
+  if (argc > 1 && argv[1] != nullptr && argv[1][0] != '\0') {
+    return std::atoi(argv[1]);
+  }
+  const char *env = std::getenv("VIC_TEST_DEVICE_INDEX");
+  if (env != nullptr && env[0] != '\0') {
+    return std::atoi(env);
+  }
+  return -1;
+}
+
+// 显式指定设备却建不出句柄时，区分两种情况：
+//   * 这个下标根本不存在 → 调用方写错了，必须 FAIL（否则「验证过设备 1」是一句假话）；
+//   * 设备存在但后端按契约拒绝它（例如没有 shaderFloat64，指标没法用 double 累加）
+//     → SKIP 并打印原因，让路由层的回退行为有据可查，而不是把它算成测试失败。
+struct DeviceProbe {
+  bool exists = false;
+  std::string name;
+  bool float64 = false;
+};
+
+DeviceProbe probeDevice(int index) {
+  DeviceProbe probe;
+  if (index < 0) return probe;
+  VkApplicationInfo app{};
+  app.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+  app.apiVersion = VK_API_VERSION_1_0;
+  VkInstanceCreateInfo ci{};
+  ci.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+  ci.pApplicationInfo = &app;
+  VkInstance instance = VK_NULL_HANDLE;
+  if (vkCreateInstance(&ci, nullptr, &instance) != VK_SUCCESS) return probe;
+  uint32_t count = 0;
+  if (vkEnumeratePhysicalDevices(instance, &count, nullptr) == VK_SUCCESS &&
+      static_cast<uint32_t>(index) < count) {
+    std::vector<VkPhysicalDevice> devices(count);
+    if (vkEnumeratePhysicalDevices(instance, &count, devices.data()) ==
+        VK_SUCCESS) {
+      VkPhysicalDeviceProperties props{};
+      vkGetPhysicalDeviceProperties(devices[index], &props);
+      VkPhysicalDeviceFeatures features{};
+      vkGetPhysicalDeviceFeatures(devices[index], &features);
+      probe.exists = true;
+      probe.name = props.deviceName;
+      probe.float64 = features.shaderFloat64 != VK_FALSE;
+    }
+  }
+  vkDestroyInstance(instance, nullptr);
+  return probe;
+}
+
 } // namespace
 
-int main() {
-  // -1 = 自动选（独显优先）；没有设备时明确 SKIP。
+int main(int argc, char **argv) {
+  const int device_index = requestedDeviceIndex(argc, argv);
+  const bool explicit_device = device_index >= 0;
+
   image_codec_vulkan_codec *codec = nullptr;
   const image_codec_vulkan_status cs =
-      image_codec_vulkan_codec_create(&codec, -1);
+      image_codec_vulkan_codec_create(&codec, device_index);
   if (cs == IMAGE_CODEC_VULKAN_ERR_BACKEND_UNAVAILABLE) {
-    std::printf("SKIP: no usable Vulkan device\n");
+    if (!explicit_device) {
+      std::printf("SKIP: no usable Vulkan device\n");
+      return 2;
+    }
+    const DeviceProbe probe = probeDevice(device_index);
+    if (!probe.exists) {
+      std::printf("FAIL: Vulkan device %d does not exist\n", device_index);
+      return 1;
+    }
+    std::printf("SKIP: device %d '%s' cannot back the Vulkan codec "
+                "(shaderFloat64=%d); metrics need fp64 accumulation, so the "
+                "router must fall back to another backend\n",
+                device_index, probe.name.c_str(), probe.float64 ? 1 : 0);
     return 2;
   }
   if (cs != IMAGE_CODEC_VULKAN_OK || codec == nullptr) {
@@ -552,13 +647,21 @@ int main() {
           "get_memory_info: budget reflected");
 
     // 64 KiB 上限下，400x300x3 的指标 band 缓冲必然放不下 -> OutOfMemory，
-    // 而不是「悄悄改用 CPU 算完再报成功」。
+    // 而不是「悄悄改用 CPU 算完再报成功」。没有 fp64 的设备连指标都跑不了
+    // （BackendUnavailable），这时预算检查没有意义，明确跳过而不是假装通过。
     image_codec_vulkan_image a = makePattern();
     image_codec_vulkan_image b = makeDisturbed(a);
     double mse = 0.0;
-    check(image_codec_vulkan_metric_mse(codec, &a, &b, &mse) ==
-              IMAGE_CODEC_VULKAN_ERR_OUT_OF_MEMORY,
-          "tiny budget: metric_mse reports out-of-memory");
+    const image_codec_vulkan_status bs =
+        image_codec_vulkan_metric_mse(codec, &a, &b, &mse);
+    if (bs == IMAGE_CODEC_VULKAN_ERR_BACKEND_UNAVAILABLE) {
+      std::printf(
+          "SKIP tiny budget: no metrics on '%s' (needs shaderFloat64)\n",
+          caps.device_name);
+    } else {
+      check(bs == IMAGE_CODEC_VULKAN_ERR_OUT_OF_MEMORY,
+            "tiny budget: metric_mse reports out-of-memory");
+    }
     image_codec_vulkan_image_free(&a);
     image_codec_vulkan_image_free(&b);
 
@@ -576,45 +679,56 @@ int main() {
   }
 
   // ---- 6. 指标 vs 父项目 golden 常量 ----
+  //
+  // 指标是后端的可选能力：设备没有 shaderFloat64 时 double 累加做不到，C API
+  // 会明确返回 BackendUnavailable（路由层据此回退 CPU 指标）。这种情况下不把
+  // 它算成测试失败，但必须打印原因——「跳过」要有据可查。
   {
     image_codec_vulkan_image a = makePattern();
     image_codec_vulkan_image b = makeDisturbed(a);
-
-    constexpr double kGoldenMse = 1.989219444444;
-    constexpr double kGoldenPsnr = 45.143976650968;
-    constexpr double kGoldenSsim = 0.992878374042;
-    constexpr double kGoldenMsSsim = 0.999443606477;
-
     double mse = 0.0;
-    check(image_codec_vulkan_metric_mse(codec, &a, &b, &mse) ==
-              IMAGE_CODEC_VULKAN_OK,
-          "metric_mse");
-    checkNear(mse, kGoldenMse, 1e-9, "metric mse vs golden");
+    const image_codec_vulkan_status ms =
+        image_codec_vulkan_metric_mse(codec, &a, &b, &mse);
+    if (ms == IMAGE_CODEC_VULKAN_ERR_BACKEND_UNAVAILABLE) {
+      std::printf("SKIP metrics: device '%s' has no shaderFloat64; the router "
+                  "must fall back to CPU metrics\n",
+                  caps.device_name);
+      image_codec_vulkan_image_free(&a);
+      image_codec_vulkan_image_free(&b);
+    } else {
+      constexpr double kGoldenMse = 1.989219444444;
+      constexpr double kGoldenPsnr = 45.143976650968;
+      constexpr double kGoldenSsim = 0.992878374042;
+      constexpr double kGoldenMsSsim = 0.999443606477;
 
-    double psnr = 0.0;
-    check(image_codec_vulkan_metric_psnr(codec, &a, &b, &psnr) ==
-              IMAGE_CODEC_VULKAN_OK,
-          "metric_psnr");
-    checkNear(psnr, kGoldenPsnr, 1e-9, "metric psnr vs golden");
+      check(ms == IMAGE_CODEC_VULKAN_OK, "metric_mse");
+      checkNear(mse, kGoldenMse, 1e-9, "metric mse vs golden");
 
-    image_codec_vulkan_ssim ssim{};
-    check(image_codec_vulkan_metric_ssim(codec, &a, &b, &ssim) ==
-              IMAGE_CODEC_VULKAN_OK,
-          "metric_ssim");
-    checkNear(ssim.ssim, kGoldenSsim, 1e-9, "metric ssim vs golden");
-    checkNear(ssim.ms_ssim, kGoldenMsSsim, 1e-9, "metric ms-ssim vs golden");
-    check(ssim.levels == 5, "metric levels == 5");
+      double psnr = 0.0;
+      check(image_codec_vulkan_metric_psnr(codec, &a, &b, &psnr) ==
+                IMAGE_CODEC_VULKAN_OK,
+            "metric_psnr");
+      checkNear(psnr, kGoldenPsnr, 1e-9, "metric psnr vs golden");
 
-    // 尺寸/通道不一致必须报参数非法，绝不做隐式缩放。
-    image_codec_vulkan_image small = makeImage(10, 10, 1, 5u);
-    double ignored = 0.0;
-    check(image_codec_vulkan_metric_mse(codec, &a, &small, &ignored) ==
-              IMAGE_CODEC_VULKAN_ERR_INVALID_ARGUMENT,
-          "metric rejects mismatched images");
+      image_codec_vulkan_ssim ssim{};
+      check(image_codec_vulkan_metric_ssim(codec, &a, &b, &ssim) ==
+                IMAGE_CODEC_VULKAN_OK,
+            "metric_ssim");
+      checkNear(ssim.ssim, kGoldenSsim, 1e-9, "metric ssim vs golden");
+      checkNear(ssim.ms_ssim, kGoldenMsSsim, 1e-9, "metric ms-ssim vs golden");
+      check(ssim.levels == 5, "metric levels == 5");
 
-    image_codec_vulkan_image_free(&small);
-    image_codec_vulkan_image_free(&a);
-    image_codec_vulkan_image_free(&b);
+      // 尺寸/通道不一致必须报参数非法，绝不做隐式缩放。
+      image_codec_vulkan_image small = makeImage(10, 10, 1, 5u);
+      double ignored = 0.0;
+      check(image_codec_vulkan_metric_mse(codec, &a, &small, &ignored) ==
+                IMAGE_CODEC_VULKAN_ERR_INVALID_ARGUMENT,
+            "metric rejects mismatched images");
+
+      image_codec_vulkan_image_free(&small);
+      image_codec_vulkan_image_free(&a);
+      image_codec_vulkan_image_free(&b);
+    }
   }
 
   // ---- 7. 非法输入 ----

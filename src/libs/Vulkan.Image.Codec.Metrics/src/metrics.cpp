@@ -222,6 +222,17 @@ bool prepare(Device &device, Scratch &scratch, const Options &options,
     if (err != nullptr) *err = local_err;
     return false;
   }
+  // 指标必须用 double 累加（与 CPU 参考逐位一致的前提），没有 shaderFloat64
+  // 就只能明确失败：上层据此回退 CPU 指标，而不是拿一份 float 结果冒充。
+  // 编解码不受这条限制，所以这个检查只在指标入口做。
+  if (!device.caps().fp64) {
+    if (err != nullptr) {
+      *err = "metrics: device '" + device.caps().name +
+             "' does not support shaderFloat64 (metrics need double "
+             "accumulation); fall back to the CPU metrics";
+    }
+    return false;
+  }
   device.setMemoryLimit(options.memory_limit);
 
   scratch.bind(&device);
