@@ -1,13 +1,7 @@
-# ---- shader 编译: glslc（Vulkan SDK）----
-find_program(VIC_GLSLC glslc
-  HINTS "$ENV{VULKAN_SDK}/Bin" "$ENV{VULKAN_SDK}/bin"
-  PATH_SUFFIXES Bin bin)
-if(NOT VIC_GLSLC AND TARGET Vulkan::glslc)
-  get_target_property(VIC_GLSLC Vulkan::glslc IMPORTED_LOCATION)
-endif()
-if(NOT VIC_GLSLC)
-  message(FATAL_ERROR "glslc 未找到。请安装 Vulkan SDK 或设置 VULKAN_SDK 环境变量。")
-endif()
+# VulkanImageCodec.Core —— 设备/上下文、可导出资源、compute pipeline（平台无关）。
+#
+# 着色器编译工具链的探测与 vic_add_shader_spv() 在顶层 CMakeLists.txt 里，
+# 各模块（Core / Metrics / Png / Tiff / Jpeg）共用同一套 glslc / glslangValidator 规则。
 
 set(VIC_SPV_DIR "${CMAKE_CURRENT_BINARY_DIR}/spv")
 set(VIC_GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
@@ -17,27 +11,20 @@ file(MAKE_DIRECTORY "${VIC_SPV_DIR}" "${VIC_GEN_DIR}")
 set(VIC_SHADERS gradient_buffer gradient_texture)
 set(VIC_SPV_FILES "")
 foreach(s ${VIC_SHADERS})
-  add_custom_command(
-    OUTPUT "${VIC_SPV_DIR}/${s}.spv"
-    COMMAND ${VIC_GLSLC} "${CMAKE_CURRENT_SOURCE_DIR}/shaders/${s}.comp"
-            -o "${VIC_SPV_DIR}/${s}.spv"
-    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/shaders/${s}.comp")
+  vic_add_shader_spv("${CMAKE_CURRENT_SOURCE_DIR}/shaders/${s}.comp"
+                     "${VIC_SPV_DIR}/${s}.spv")
   list(APPEND VIC_SPV_FILES "${VIC_SPV_DIR}/${s}.spv")
 endforeach()
 
-add_custom_command(
-  OUTPUT "${VIC_SPV_HEADER}"
-  COMMAND ${CMAKE_COMMAND}
-    "-DSPV_FILES=${VIC_SPV_FILES}"
-    "-DOUT_HEADER=${VIC_SPV_HEADER}"
-    -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/spv_to_header.cmake"
-  DEPENDS ${VIC_SPV_FILES})
-list(APPEND VIC_SPV_FILES "${VIC_SPV_HEADER}")
+vic_spv_to_header("${VIC_SPV_FILES}" "${VIC_SPV_HEADER}")
 
 add_library(VulkanImageCodec.Core STATIC
   src/context.cpp
   src/exportable.cpp
   src/compute.cpp
+  # 生成的头必须列进源码：否则编译器先跑去编 compute.cpp，
+  # 自定义命令还没执行，头文件尚不存在（并行构建下必现）。
+  "${VIC_SPV_HEADER}"
   ${VIC_SPV_FILES})
 target_include_directories(VulkanImageCodec.Core PUBLIC
   "${VIC_SOURCE_DIR}/include"
