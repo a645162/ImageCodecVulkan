@@ -29,12 +29,14 @@
 #include "png_codec.h"
 #include "png_container.h"
 #include "tiff_codec.h"
+#include "vk_buffer.h"
 #include "vk_codec_device.h"
 
 using image_codec::vulkan::Device;
 using image_codec::vulkan::DeviceCaps;
 using image_codec::vulkan::ImageBuffer;
 using image_codec::vulkan::MemoryInfo;
+using image_codec::vulkan::Buffer;
 
 struct image_codec_vulkan_codec {
   int device_index = -1;
@@ -568,6 +570,61 @@ image_codec_vulkan_encode(image_codec_vulkan_codec *codec, int format,
     return IMAGE_CODEC_VULKAN_ERR_OUT_OF_MEMORY;
   }
   std::memcpy(out, encoded.data(), encoded.size());
+  return IMAGE_CODEC_VULKAN_OK;
+}
+
+image_codec_vulkan_status image_codec_vulkan_gpu_stage(
+    image_codec_vulkan_codec *codec, const image_codec_vulkan_image *in,
+    image_codec_vulkan_image *out) {
+  if (codec == nullptr || in == nullptr || out == nullptr || in->data == nullptr ||
+      in->width == 0 || in->height == 0 || in->channels == 0 ||
+      in->channels > 4) {
+    return IMAGE_CODEC_VULKAN_ERR_INVALID_ARGUMENT;
+  }
+  std::memset(out, 0, sizeof(*out));
+  const size_t row_bytes = static_cast<size_t>(in->width) * in->channels;
+  if (in->height > static_cast<size_t>(-1) / row_bytes) {
+    return IMAGE_CODEC_VULKAN_ERR_INVALID_ARGUMENT;
+  }
+  const size_t bytes = row_bytes * in->height;
+  if (in->stride != 0 && in->stride < row_bytes) {
+    return IMAGE_CODEC_VULKAN_ERR_INVALID_ARGUMENT;
+  }
+  std::vector<uint8_t> packed;
+  const uint8_t *source = in->data;
+  if (in->stride != 0 && in->stride != row_bytes) {
+    packed.resize(bytes);
+    for (uint32_t y = 0; y < in->height; ++y) {
+      std::memcpy(packed.data() + static_cast<size_t>(y) * row_bytes,
+                  in->data + static_cast<size_t>(y) * in->stride, row_bytes);
+    }
+    source = packed.data();
+  }
+
+  Device device;
+  std::string err;
+  if (!device.init(codec->device_index, &err)) {
+    return IMAGE_CODEC_VULKAN_ERR_BACKEND_UNAVAILABLE;
+  }
+  device.setMemoryLimit(codec->memory_limit);
+  Buffer buffer(&device, bytes);
+  if (!buffer.ok() || !buffer.upload(source, bytes)) {
+    return device.takeExhausted() ? IMAGE_CODEC_VULKAN_ERR_OUT_OF_MEMORY
+                                  : IMAGE_CODEC_VULKAN_ERR_INTERNAL;
+  }
+  std::vector<uint8_t> result(bytes);
+  if (!buffer.download(result.data(), bytes)) {
+    return device.takeExhausted() ? IMAGE_CODEC_VULKAN_ERR_OUT_OF_MEMORY
+                                  : IMAGE_CODEC_VULKAN_ERR_INTERNAL;
+  }
+  out->data = static_cast<uint8_t *>(std::malloc(bytes));
+  if (out->data == nullptr) return IMAGE_CODEC_VULKAN_ERR_OUT_OF_MEMORY;
+  std::memcpy(out->data, result.data(), bytes);
+  out->width = in->width;
+  out->height = in->height;
+  out->channels = in->channels;
+  out->stride = row_bytes;
+  out->data_size = bytes;
   return IMAGE_CODEC_VULKAN_OK;
 }
 
