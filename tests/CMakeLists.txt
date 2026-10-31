@@ -18,3 +18,15 @@ target_link_libraries(codec_metrics_test PRIVATE
 add_test(NAME codec_metrics_test COMMAND codec_metrics_test)
 # 退出码 2 = 本机没有可用 Vulkan 设备 / 没有 fp64：属于环境 SKIP，不是失败。
 set_tests_properties(codec_metrics_test PROPERTIES SKIP_RETURN_CODE 2)
+
+# PNG：GPU 行滤波与 CPU 参考逐字节对拍 + 1..4 通道无损往返。
+add_executable(png_test png_test.cpp)
+target_link_libraries(png_test PRIVATE VulkanImageCodec::Png)
+add_test(NAME png_test COMMAND png_test)
+set_tests_properties(png_test PROPERTIES SKIP_RETURN_CODE 2)
+
+# TIFF：GPU 预测器与 CPU 参考逐字节对拍 + strip/tile、1..4 通道无损往返。
+add_executable(tiff_test tiff_test.cpp)
+target_link_libraries(tiff_test PRIVATE VulkanImageCodec::Tiff)
+add_test(NAME tiff_test COMMAND tiff_test)
+set_tests_properties(tiff_test PROPERTIES SKIP_RETURN_CODE 2)

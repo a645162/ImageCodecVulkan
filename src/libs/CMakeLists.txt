@@ -1,6 +1,8 @@
 add_subdirectory(Vulkan.Image.Codec.Core)
 add_subdirectory(Vulkan.Image.Codec.Common)
 add_subdirectory(Vulkan.Image.Codec.Metrics)
+add_subdirectory(Vulkan.Image.Codec.Png)
+add_subdirectory(Vulkan.Image.Codec.Tiff)
 if(WIN32)
   add_subdirectory(Vulkan.Image.Codec.GlInterop)
   add_subdirectory(Vulkan.Image.Codec.Api)
