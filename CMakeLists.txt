@@ -39,6 +39,18 @@ option(VIC_BUILD_EXAMPLES "Build examples" OFF)
 
 # Vulkan 由 vcpkg vulkan port 提供（headers + loader）。
 find_package(Vulkan REQUIRED)
+find_package(glslang CONFIG REQUIRED)
+
+# vcpkg 的 glslang port提供库而非 glslangValidator 可执行文件。用项目自己的
+# 构建期小工具调用同一套 API，避免把开发机上的 Vulkan SDK 命令行工具变成
+# 隐含依赖。
+add_executable(vic_glslang_compile EXCLUDE_FROM_ALL
+  cmake/vic_glslang_compile.cpp)
+target_compile_features(vic_glslang_compile PRIVATE cxx_std_17)
+target_link_libraries(vic_glslang_compile PRIVATE
+  glslang::glslang
+  glslang::SPIRV
+  glslang::glslang-default-resource-limits)
 
 # ---- GLSL -> SPIR-V ----
 # Vulkan SDK 带 glslc；Linux 发行版通常只提供 glslang-tools（glslangValidator）。
@@ -62,9 +74,8 @@ elseif(VIC_GLSLANG_VALIDATOR)
   set(VIC_SHADER_COMPILER "${VIC_GLSLANG_VALIDATOR}")
   set(VIC_SHADER_MODE glslang)
 else()
-  message(FATAL_ERROR
-    "未找到 GLSL 编译器（glslc 或 glslangValidator）。请安装 Vulkan SDK；"
-    "Linux 也可 apt install glslang-tools，或设置 VULKAN_SDK 环境变量。")
+  set(VIC_SHADER_MODE glslang-library)
+  set(VIC_SHADER_COMPILER vic_glslang_compile)
 endif()
 message(STATUS "VIC shader compiler: ${VIC_SHADER_COMPILER} (${VIC_SHADER_MODE})")
 
@@ -77,11 +88,19 @@ function(vic_add_shader_spv shader out_spv)
       DEPENDS "${shader}"
       VERBATIM)
   else()
-    add_custom_command(
-      OUTPUT "${out_spv}"
-      COMMAND "${VIC_SHADER_COMPILER}" -V "${shader}" -o "${out_spv}"
-      DEPENDS "${shader}"
-      VERBATIM)
+    if(VIC_SHADER_MODE STREQUAL "glslang")
+      add_custom_command(
+        OUTPUT "${out_spv}"
+        COMMAND "${VIC_SHADER_COMPILER}" -V "${shader}" -o "${out_spv}"
+        DEPENDS "${shader}"
+        VERBATIM)
+    else()
+      add_custom_command(
+        OUTPUT "${out_spv}"
+        COMMAND $<TARGET_FILE:vic_glslang_compile> "${shader}" "${out_spv}"
+        DEPENDS "${shader}" vic_glslang_compile
+        VERBATIM)
+    endif()
   endif()
 endfunction()
 
