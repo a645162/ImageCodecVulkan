@@ -1,0 +1,46 @@
+// File      : jpeg_downsample.comp
+// Brief     : JPEG 编码的色度 2x2 盒式下采样（libjpeg h2v2_downsample）
+// Author    : 孔昊旻(Haomin Kong)
+// Email     : <a645162@qq.com> / <konghm@beim.com.cn>
+// Created   : 2026-10-31
+//
+// (a+b+c+d+2)>>2 —— 与 libjpeg 完全同一条舍入规则。用 >>2 而不是 /4，
+// 因为负数在 GLSL 里除法的舍入方向没有保证，移位才有定义。
+#version 450
+
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0) readonly buffer SrcBuf { float plane[]; } src;
+layout(set = 0, binding = 1) buffer DstBuf { float plane[]; } dst;
+
+layout(push_constant) uniform Params {
+  int src_stride;
+  int dst_stride;
+  int src_w;
+  int src_h;
+  int dst_w;
+  int dst_h;
+} pc;
+
+int sampleClamped(int x, int y) {
+  const int cx = clamp(x, 0, pc.src_w - 1);
+  const int cy = clamp(y, 0, pc.src_h - 1);
+  return int(src.plane[cy * pc.src_stride + cx] + 0.5);
+}
+
+void main() {
+  const uint total = uint(pc.dst_w) * uint(pc.dst_h);
+  const uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+
+  for (uint gid = gl_GlobalInvocationID.x; gid < total; gid += stride) {
+    const int x = int(gid % uint(pc.dst_w));
+    const int y = int(gid / uint(pc.dst_w));
+    const int sx = x * 2;
+    const int sy = y * 2;
+    const int a = sampleClamped(sx, sy);
+    const int b = sampleClamped(sx + 1, sy);
+    const int c = sampleClamped(sx, sy + 1);
+    const int d = sampleClamped(sx + 1, sy + 1);
+    dst.plane[y * pc.dst_stride + x] = float((a + b + c + d + 2) >> 2);
+  }
+}

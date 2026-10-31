@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "image_buffer.h"
+#include "jpeg_codec.h"
 #include "metrics.h"
 #include "png_codec.h"
 #include "png_container.h"
@@ -199,9 +200,22 @@ validateParams(int format, const image_codec_vulkan_encode_params &p,
     }
     break;
   case IMAGE_CODEC_VULKAN_FORMAT_JPEG:
-    // JPEG 尚未实现；通道数先按契约校验，避免「不支持」把「参数非法」盖掉。
-    return channels <= 4 ? IMAGE_CODEC_VULKAN_ERR_UNSUPPORTED_FORMAT
-                         : IMAGE_CODEC_VULKAN_ERR_INVALID_ARGUMENT;
+    if (p.jpeg_quality < 1 || p.jpeg_quality > 100) {
+      return IMAGE_CODEC_VULKAN_ERR_INVALID_ARGUMENT;
+    }
+    // 0 = 自动；其余只接受 444/422/420。
+    if (p.jpeg_subsampling != 0 && p.jpeg_subsampling != 444 &&
+        p.jpeg_subsampling != 422 && p.jpeg_subsampling != 420) {
+      return IMAGE_CODEC_VULKAN_ERR_INVALID_ARGUMENT;
+    }
+    // JPEG 没有 Alpha 样本：2/4 通道是「本后端表示不了」，让路由层换后端；
+    // 0/5+ 才是调用方参数非法。
+    if (channels == 1 || channels == 3) {
+      return IMAGE_CODEC_VULKAN_OK;
+    }
+    return channels == 2 || channels == 4
+               ? IMAGE_CODEC_VULKAN_ERR_UNSUPPORTED_FORMAT
+               : IMAGE_CODEC_VULKAN_ERR_INVALID_ARGUMENT;
   default:
     return IMAGE_CODEC_VULKAN_ERR_UNSUPPORTED_FORMAT;
   }
@@ -310,9 +324,9 @@ image_codec_vulkan_get_capabilities(image_codec_vulkan_codec *codec,
                 codec->caps.name.c_str());
   out->api_version = codec->caps.api_version;
   out->total_memory = codec->caps.total_bytes;
-  // JPEG 尚未实现：显式报 0，让 router 直接回退，而不是等一次失败的编码。
-  out->jpeg_decode = 0;
-  out->jpeg_encode = 0;
+  // JPEG：容器与 Huffman 在 CPU，DCT/颜色变换在 GPU（本构建已实现）。
+  out->jpeg_decode = 1;
+  out->jpeg_encode = 1;
   out->tiff_decode = 1;
   out->tiff_encode = 1;
   out->png_decode = 1;
@@ -387,13 +401,17 @@ image_codec_vulkan_probe(const void *data, size_t size, int *out_format) {
     return IMAGE_CODEC_VULKAN_ERR_INVALID_ARGUMENT;
   }
   *out_format = IMAGE_CODEC_VULKAN_FORMAT_UNKNOWN;
-  if (data == nullptr || size < 4) {
+  // 最短的魔数是 JPEG 的 3 字节（FF D8 FF）；PNG(8)/TIFF(4) 各自在
+  // 自己的 has*Signature() 里再判长度，这里只做统一的下限。
+  if (data == nullptr || size < 3) {
     return IMAGE_CODEC_VULKAN_OK;
   }
   const auto *p = static_cast<const uint8_t *>(data);
-  // PNG 的魔数最长（8 字节），先判它；两个 TIFF 魔数只有 4 字节，不冲突。
+  // 三种魔数互不冲突：PNG 8 字节、JPEG 3 字节（FF D8 FF）、TIFF 4 字节。
   if (image_codec::vulkan::png::hasPngSignature(p, size)) {
     *out_format = IMAGE_CODEC_VULKAN_FORMAT_PNG;
+  } else if (image_codec::vulkan::jpeg::hasJpegSignature(p, size)) {
+    *out_format = IMAGE_CODEC_VULKAN_FORMAT_JPEG;
   } else if (image_codec::vulkan::tiff::hasTiffSignature(p, size)) {
     *out_format = IMAGE_CODEC_VULKAN_FORMAT_TIFF;
   }
@@ -424,9 +442,16 @@ image_codec_vulkan_decode(image_codec_vulkan_codec *codec, int format,
   case IMAGE_CODEC_VULKAN_FORMAT_PNG:
     ok = image_codec::vulkan::png::decodePng(bytes, in_len, &img, &err);
     break;
-  case IMAGE_CODEC_VULKAN_FORMAT_JPEG:
-    // JPEG 尚未实现。显式拒绝，绝不退回「随便给个结果」。
-    return IMAGE_CODEC_VULKAN_ERR_UNSUPPORTED_FORMAT;
+  case IMAGE_CODEC_VULKAN_FORMAT_JPEG: {
+    image_codec::vulkan::jpeg::JpegOptions opt;
+    opt.use_gpu = codec->use_gpu;
+    opt.device_index = codec->device_index;
+    opt.memory_limit = codec->memory_limit;
+    bool gpu_used = false;
+    ok = image_codec::vulkan::jpeg::decodeJpeg(bytes, in_len, opt, &img,
+                                               &gpu_used, &err);
+    break;
+  }
   default:
     return IMAGE_CODEC_VULKAN_ERR_UNSUPPORTED_FORMAT;
   }
@@ -460,6 +485,8 @@ image_codec_vulkan_encode(image_codec_vulkan_codec *codec, int format,
     p = *params;
   }
   if (p.band_rows <= 0) p.band_rows = 256;
+  // 0 是「未指定」的唯一含义（1..100 都是合法质量），与 CUDA 后端一致。
+  if (p.jpeg_quality == 0) p.jpeg_quality = 90;
   // 0 是「未指定」的唯一含义（1/2 都是合法值），与头文件里写的「0 取默认 2」一致。
   if (p.tiff_predictor == 0) p.tiff_predictor = 2;
 
@@ -501,8 +528,18 @@ image_codec_vulkan_encode(image_codec_vulkan_codec *codec, int format,
                                              &err);
     break;
   }
-  case IMAGE_CODEC_VULKAN_FORMAT_JPEG:
-    return IMAGE_CODEC_VULKAN_ERR_UNSUPPORTED_FORMAT;
+  case IMAGE_CODEC_VULKAN_FORMAT_JPEG: {
+    image_codec::vulkan::jpeg::JpegOptions opt;
+    opt.quality = p.jpeg_quality;
+    opt.subsampling = p.jpeg_subsampling;
+    opt.use_gpu = codec->use_gpu;
+    opt.device_index = codec->device_index;
+    opt.memory_limit = codec->memory_limit;
+    bool gpu_used = false;
+    ok = image_codec::vulkan::jpeg::encodeJpeg(src, opt, &encoded, &gpu_used,
+                                               &err);
+    break;
+  }
   default:
     return IMAGE_CODEC_VULKAN_ERR_UNSUPPORTED_FORMAT;
   }

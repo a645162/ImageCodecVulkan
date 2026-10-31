@@ -13,6 +13,7 @@ target_include_directories(VulkanImageCodec.CodecApi PUBLIC
 target_link_libraries(VulkanImageCodec.CodecApi PUBLIC
   VulkanImageCodec::Common
   VulkanImageCodec::Tiff
+  VulkanImageCodec::Jpeg
   VulkanImageCodec::Png
   VulkanImageCodec::Metrics
   Vulkan::Vulkan)
