@@ -34,6 +34,25 @@ if(MSVC)
   add_compile_options(/utf-8)
 endif()
 
+# VK_USE_PLATFORM_WIN32_KHR 必须在**任何** <vulkan/vulkan.h> 之前定义，
+# vulkan.h 才会把 vulkan_win32.h 引进来（PFN_vkGetMemoryWin32HandleKHR 等
+# Win32 句柄类型都在那个头里）。vic.hpp 里虽然也定义了它，但只要有某个 TU
+# 先包含了 <vulkan/vulkan.h>（vk_buffer.h / vk_pipeline.h 的历史包含顺序就是
+# 这样），vulkan.h 的 include guard 已经生效，后面再定义就完全来不及，表现
+# 为 context.h 里 PFN_vkGetMemoryWin32HandleKHR 报「unknown type name」。
+#
+# 这种事靠每个头自己摆顺序防不住（新增一个头就可能再踩一次），所以目录级
+# 给所有目标（含测试与 examples）统一注入；Linux 没有 vulkan_win32.h，不能
+# 无条件加，否则连 Vulkan 头都包含不进来。
+if(WIN32)
+  add_compile_definitions(VK_USE_PLATFORM_WIN32_KHR=1)
+  # windows.h（vulkan_win32.h 会把它拉进来）默认定义 min/max 宏，会把源码里的
+  # std::min/std::max 展开成 `std::(((a)<(b))?(a):(b))`，直接报「expected
+  # unqualified-id」。整个项目有十几处 std::min 调用，逐个加括号只会等着下一次
+  # 再踩，故统一关掉这两个宏。
+  add_compile_definitions(NOMINMAX)
+endif()
+
 option(VIC_BUILD_TESTS "Build ctest suite" OFF)
 option(VIC_BUILD_EXAMPLES "Build examples" OFF)
 

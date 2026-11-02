@@ -15,9 +15,11 @@
 #include <cstdint>
 #include <string>
 
-#include <vulkan/vulkan.h>
-
+// 先包含 vk_codec_device.h：它经由 vic.hpp 定义 VK_USE_PLATFORM_WIN32_KHR，
+// 必须早于 <vulkan/vulkan.h>，否则 vulkan_win32.h 不会被引入。
 #include "vk_codec_device.h"
+
+#include <vulkan/vulkan.h>
 
 namespace image_codec {
 namespace vulkan {
